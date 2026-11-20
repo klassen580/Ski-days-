@@ -7,7 +7,6 @@
 <title>Ski Days</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230b1d33'/%3E%3Cpath d='M10 78 L42 30 L56 50 L66 38 L90 78Z' fill='%23e8f1fb'/%3E%3Cpath d='M42 30 L50 42 L46 46 L40 40 L34 46Z' fill='%2390c2f0'/%3E%3C/svg%3E">
 <style>
 :root{
@@ -195,7 +194,15 @@ a{color:var(--accent2)}
 .badge.got{background:linear-gradient(160deg,#1f4a7a,#16345a);border-color:var(--accent2)}
 .badge.got .ic{filter:none;opacity:1}
 .badge.got b{color:var(--ink)}
-#hillMap{height:300px;border-radius:12px;overflow:hidden;background:#0d2240}
+#hillMap{border-radius:12px}
+#mapCard{backdrop-filter:none;-webkit-backdrop-filter:none;background:#122c4e}
+.mapBtns{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px}
+.mapBtns button{width:34px;height:34px;padding:0;border-radius:10px;font-size:18px;background:rgba(11,29,51,.85)}
+.insets{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.insetLab{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mute);font-weight:700;margin-bottom:3px}
+.selCard{display:flex;gap:10px;align-items:center;margin-top:8px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
+#hillMap img{max-width:none!important;max-height:none!important}
+.leaflet-control-attribution{font-size:9px}
 .leaflet-container{font:inherit}
 .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--snow);color:#0b1d33}
 .leaflet-popup-content button{margin-top:6px;padding:5px 10px;font-size:13px;background:var(--ticket);color:#fff;border:none;border-radius:8px}
@@ -210,6 +217,17 @@ a{color:var(--accent2)}
 .avy span{border-radius:8px;padding:3px 8px;font-size:12px;font-weight:700;color:#111}
 .chartWrap{position:relative}
 .chartTip{position:absolute;pointer-events:none;background:var(--snow);color:#0b1d33;border-radius:10px;padding:6px 9px;font-size:12px;box-shadow:0 4px 14px #0007;display:none;white-space:nowrap;z-index:5}
+#replayBox{position:absolute;left:8px;right:8px;bottom:8px;z-index:500;background:rgba(6,18,31,.85);border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:none;pointer-events:none}
+#replayBox .display{font-size:22px;line-height:1.1}
+.travel{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.travel div{background:rgba(255,255,255,.06);border-radius:12px;padding:8px 6px;text-align:center}
+.travel b{display:block;font-size:24px;line-height:1}
+.travel span{font-size:11px;color:var(--mute)}
+.stamps{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px}
+.stamps svg{width:100%;height:auto;display:block}
+.regionBar{display:grid;grid-template-columns:130px 1fr 44px;gap:8px;align-items:center;font-size:13px;margin:6px 0}
+.crashLine{font-size:12px;margin-top:4px;color:#4a6584}
+.crashLine b{color:#d8452a}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
 .stakeCard{display:flex;gap:6px;align-items:center;padding:12px 14px 6px 4px}
 .stake{flex:0 0 auto}
@@ -252,7 +270,11 @@ a{color:var(--accent2)}
     <h2 class="display">📅 Season calendar</h2><div class="card" id="heatmap"></div>
     <h2 class="display">📈 Season vs season</h2><div class="card" id="compare"></div>
     <h2 class="display">👥 Ski buddies</h2><div class="card" id="buddies"></div>
-    <h2 class="display">🗺️ Hill map</h2><div class="card" id="mapCard"><div id="hillMap"></div><div id="mapInfo"></div></div>
+    <h2 class="display">🗺️ Hill map</h2><div class="card" id="mapCard">
+      <div class="row" style="margin-bottom:8px"><div class="chips" id="mapScope" style="margin:0"></div><button class="primary" id="replayBtn" style="flex:0 0 auto;padding:7px 12px">▶ Replay</button></div>
+      <div id="hillMap"></div>
+      <div class="mute small" id="mapStatus" style="margin-top:4px;font-size:11px"></div><div id="travelStats"></div><div id="mapInfo"></div></div>
+    <h2 class="display">🛂 Ski passport</h2><div class="card" id="passport"></div>
     <h2 class="display" id="packTitle">📈 Snowpack</h2><div class="card" id="snowpack"></div>
   </div>
 
@@ -292,6 +314,7 @@ a{color:var(--accent2)}
   </div>
   </div>
   <p class="mute small" style="margin-top:16px">Snow &amp; weather: modelled data from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> at each hill's mid-mountain elevation. Use the hill's own report for official numbers.</p>
+  <p class="mute small" style="text-align:center;margin-top:4px">Ski Days · version 2026-11-20g (crash log)</p>
 </div>
 
 <!-- Edit / add day -->
@@ -300,6 +323,16 @@ a{color:var(--accent2)}
   <label>Date</label><input type="date" id="fDate">
   <label>Hill</label><select id="fHill"></select>
   <label>How was it?</label><div class="stars" id="fStars"></div>
+  <label>💥 Did I crash?</label>
+  <div class="tabs" id="fCrashYN" style="margin-top:0"><button data-c="">Not saying</button><button data-c="no">No 🛡️</button><button data-c="yes">Yes 💥</button></div>
+  <div id="fCrashBox" style="display:none">
+    <div class="row" style="margin-top:10px;align-items:center">
+      <span class="mute small" style="flex:0 0 auto">How many?</span>
+      <button id="cMinus" style="flex:0 0 auto;width:44px">−</button><b class="display" id="cCount" style="flex:0 0 auto;font-size:34px;min-width:36px;text-align:center">1</b><button id="cPlus" style="flex:0 0 auto;width:44px">+</button>
+    </div>
+    <div class="chips" id="fCrashTypes"></div>
+    <input id="fCrashNote" placeholder="What happened? (optional)" style="margin-top:8px">
+  </div>
   <label>Notes</label><textarea id="fNotes" placeholder="Best runs, conditions, lunch spot..."></textarea>
   <label>Skied with</label><input id="fBuddies" placeholder="Names, separated by commas"><div class="chips" id="fBuddyChips"></div>
   <label>Gear</label><select id="fGear"></select>
@@ -625,6 +658,7 @@ function render(){
         <div class="name display">${esc(hillById(d.hill).name)}${pow ? (isBluebird(d.cond) ? '<span class="powBadge" style="background:#ffd166">☀️ BLUEBIRD POW</span>' : '<span class="powBadge">POW</span>') : ""}${d.rating?`<span class="flakes">${"❄".repeat(d.rating)}</span>`:""}</div>
         ${ticketPills(d)}
         ${d.buddies && d.buddies.length?`<div class="buddyLine">👥 with ${esc(d.buddies.join(", "))}</div>`:""}
+        ${crashLine(d)}
         ${d.notes?`<div class="notes">${esc(d.notes)}</div>`:""}
         ${d.photo?`<img class="thumb" data-photo="${d.id}" alt="">`:""}</div></div>`;
   }).join("") + tallyCards : `<div class="empty"><span class="display">No turns logged yet</span>Your ${currentSeason} lift tickets will show up here.</div>`;
@@ -655,7 +689,7 @@ function openDay(day){
   renderBuddyChips();
   $("fGear").innerHTML = `<option value="">— None —</option>` + state.gear.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join("");
   $("fGear").value = day ? (day.gear || "") : (defaultGear() || "");
-  editPhoto = null; showPhotoBox(day);
+  editPhoto = null; showPhotoBox(day); loadCrash(day);
   const cs = (day && day.costs) || {};
   $("cGas").value = cs.gas || ""; $("cFood").value = cs.food || ""; $("cLodge").value = cs.lodging || ""; $("cOther").value = cs.other || "";
   $("dayModal").classList.add("open");
@@ -674,7 +708,7 @@ $("fSave").onclick = async () => {
   const gear = $("fGear").value || null; if (gear) state.settings.lastGear = gear;
   const num = id => { const v = parseFloat($(id).value); return v > 0 ? v : 0; };
   const costs = {gas: num("cGas"), food: num("cFood"), lodging: num("cLodge"), other: num("cOther")};
-  Object.assign(day, {date, hill, rating: editRating, notes: $("fNotes").value.trim(), buddies, gear, costs});
+  Object.assign(day, {date, hill, rating: editRating, notes: $("fNotes").value.trim(), buddies, gear, costs, crash: crashValue()});
   currentSeason = seasonOf(date);
   if (editPhoto === "remove"){ day.photo = false; await PDB.del(day.id); delete thumbCache[day.id]; }
   else if (editPhoto){ try { await PDB.put(day.id, editPhoto); day.photo = true; delete thumbCache[day.id]; } catch(e){ toast("Couldn't save the photo"); } }
@@ -1127,6 +1161,8 @@ const BADGES = [
   ["usa", "🇺🇸", "Border Hopper", "Ski in the USA", s => s.all.some(d => hillById(d.hill).region === "uswest" || ["stowe","jay"].includes(d.hill))],
   ["japow", "🇯🇵", "Japow", "Ski in Japan", s => s.all.some(d => hillById(d.hill).region === "japan")],
   ["crew", "👯", "The Crew", "Ski with 5 different buddies", s => new Set(s.all.flatMap(d => d.buddies || [])).size >= 5],
+  ["yard", "🧦", "Yard Sale", "Log a crash", s => s.all.some(d => d.crash && d.crash.n > 0)],
+  ["clean", "🛡️", "Untouchable", "5 crash-free days in a row", s => cleanStreak(s.all) >= 5],
   ["wax", "🕯️", "Waxhead", "Wax your gear 3 times", s => state.gear.reduce((a,g) => a + (g.waxCount || 0), 0) >= 3],
   ["d10", "🔟", "10 Club", "10 days in a season", s => s.best >= 10],
   ["d25", "🎖️", "25 Club", "25 days in a season", s => s.best >= 25],
@@ -1157,51 +1193,277 @@ function renderBadges(){
 }
 
 // ---------- Hill map + bucket list ----------
-let mapObj = null, mapLayer = null, leafletLoading = null;
-function loadLeaflet(){
-  if (window.L) return Promise.resolve();
-  if (leafletLoading) return leafletLoading;
-  return leafletLoading = new Promise((res, rej) => { const sc = document.createElement("script");
-    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"; sc.onload = res; sc.onerror = () => { leafletLoading = null; rej(); }; document.head.appendChild(sc); });
+let mapScope = "all";
+const scopeDays = () => mapScope === "all" ? state.days : seasonDays(currentSeason);
+function hillDaysAll(){ const c = {};
+  scopeDays().forEach(d => c[d.hill] = (c[d.hill]||0) + 1);
+  state.tallies.filter(t => mapScope === "all" || t.season === currentSeason).forEach(t => { if (t.hill !== "any") c[t.hill] = (c[t.hill]||0) + t.count; });
+  return c; }
+// rough travel: group consecutive days (≤1 day apart, hills within 250 km) into trips; long hauls (>1200 km) count as flights
+function travelStats(){
+  const home = TOWNS.find(t => t.id === state.settings.town) || TOWNS[0];
+  const days = scopeDays().slice().sort((a,b) => a.date.localeCompare(b.date));
+  let drive = 0, flights = 0, trips = 0, prev = null, tripStart = null;
+  for (const d of days){
+    const h = hillById(d.hill); if (!h.lat) continue;
+    const sameTrip = prev && addDays(prev.date, 1) >= d.date && km(hillById(prev.hill), h) < 250;
+    if (sameTrip){ if (prev.hill !== d.hill) drive += km(hillById(prev.hill), h) * 1.3; }
+    else {
+      if (tripStart) { const back = km(hillById(prev.hill), home); if (back > 1200) flights++; else drive += back * 1.3; }
+      trips++; tripStart = d; const out = km(home, h); if (out > 1200) flights++; else drive += out * 1.3;
+    }
+    prev = d;
+  }
+  if (prev){ const back = km(hillById(prev.hill), home); if (back > 1200) flights++; else drive += back * 1.3; }
+  return {drive: Math.round(drive / 10) * 10, flights, trips, from: home.name};
 }
-function hillDaysAll(){ const c = {}; state.days.forEach(d => c[d.hill] = (c[d.hill]||0) + 1); state.tallies.forEach(t => { if (t.hill !== "any") c[t.hill] = (c[t.hill]||0) + t.count; }); return c; }
+function renderTravel(){
+  const el = $("travelStats"); if (!el) return;
+  const t = travelStats();
+  el.innerHTML = t.trips ? `<div class="travel"><div><b class="display">${t.drive.toLocaleString()}</b><span>km driven</span></div><div><b class="display">${t.trips}</b><span>ski trips</span></div><div><b class="display">${t.flights}</b><span>flight${t.flights === 1 ? "" : "s"}</span></div></div>
+    <div class="mute small" style="margin-top:4px">Rough estimate from ${esc(t.from)}, counting multi-day trips once.</div>` : "";
+}
+function renderScopeChips(){
+  $("mapScope").innerHTML = [["all","All-time"],["season",currentSeason]].map(([k, l]) => `<button class="chip ${mapScope === k ? "on" : ""}" data-s="${k}">${l}</button>`).join("");
+  $("mapScope").querySelectorAll("button").forEach(b => b.onclick = () => { mapScope = b.dataset.s; renderScopeChips(); drawMarkers(); renderMapInfo(); renderTravel(); renderPassport(); });
+}
 function renderMapInfo(){
   const c = hillDaysAll(), bucket = state.bucket || [];
   const visited = Object.keys(c).length;
   $("mapInfo").innerHTML = `<div class="legendRow"><span><i style="background:#ff6a3d"></i>Skied (${visited})</span><span><i style="background:#ffd166"></i>Bucket list (${bucket.length})</span><span><i style="background:#8aa2bd"></i>Not yet</span></div>
     ${bucket.length ? `<div class="mute small" style="margin-top:6px">🎯 Bucket list: ${bucket.map(id => `<b style="color:var(--ink)">${esc(hillById(id).name)}</b>${c[id] ? " ✅" : ""}`).join(" · ")}</div>` : `<div class="mute small" style="margin-top:6px">Tap any hill to add it to your bucket list.</div>`}`;
 }
-async function renderMap(){
-  if (!$("hillMap")) return;
-  renderMapInfo();
-  try { await loadLeaflet(); } catch(e){ $("hillMap").innerHTML = `<div class="mute small" style="padding:14px">The map needs an internet connection.</div>`; $("hillMap").style.height = "auto"; return; }
-  if (!mapObj){
-    mapObj = L.map("hillMap", {zoomControl: true, attributionControl: true, worldCopyJump: true}).setView([50.5, -116], 5);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {maxZoom: 12, subdomains: "abcd",
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'}).addTo(mapObj);
-    $("hillMap").addEventListener("click", e => {
-      const b = e.target.closest("[data-bucket]"); if (!b) return;
-      const id = b.dataset.bucket; state.bucket = state.bucket || [];
-      state.bucket = state.bucket.includes(id) ? state.bucket.filter(x => x !== id) : state.bucket.concat(id);
-      save(); mapObj.closePopup(); drawMarkers(); renderMapInfo();
-    });
-  }
-  setTimeout(() => mapObj.invalidateSize(), 50);
-  drawMarkers();
+// ---------- Built-in map (no outside images needed) ----------
+// Hand-simplified outlines: rough, but enough to place every hill. Coordinates are [lon, lat].
+const GEO = {
+  coast: [[-131,55.5],[-130.3,54.6],[-129.4,53.6],[-128.6,52.6],[-127.8,51.6],[-127.2,50.9],[-125.7,50.3],[-124.9,49.9],[-123.9,49.5],[-123.2,49.3],[-122.8,49.0],[-122.5,48.4],[-122.4,47.6],[-122.9,47.1],[-123.1,47.5],[-122.7,48.1],[-123.8,48.2],[-124.7,48.4],[-124.2,46.9],[-124.0,46.3],[-123.9,45.2],[-124.1,44.0],[-124.5,42.8],[-124.2,41.8],[-124.4,40.4],[-123.8,39.2],[-123.0,38.2],[-122.5,37.8],[-122.4,37.2],[-121.9,36.6],[-121.3,35.8],[-120.7,35.0],[-120.6,34.6],[-119.5,34.4],[-118.5,34.0],[-117.9,33.6],[-117.3,33.0],[-117.1,32.5],[-116.9,31.0]],
+  vanIsland: [[-128.4,50.8],[-127.4,50.6],[-126.2,50.1],[-125.3,49.9],[-124.4,49.2],[-123.4,48.4],[-124.0,48.5],[-124.8,48.6],[-125.6,49.0],[-126.6,49.5],[-127.6,50.1]],
+  lines: [
+    [[-122.8,49.0],[-95,49.0]],                                                      // Canada–US border
+    [[-114.07,49.0],[-114.6,49.9],[-115.0,50.5],[-115.6,50.9],[-116.29,51.45],[-117.2,52.15],[-118.4,52.9],[-119.4,53.4],[-120.0,53.8],[-120.0,60]], // BC–AB (Continental Divide)
+    [[-110.0,49.0],[-110.0,60]],                                                    // AB–SK
+    [[-102.0,49.0],[-102.0,60]],                                                    // SK–MB
+    [[-124.0,46.25],[-123.0,46.1],[-121.2,45.6],[-119.0,46.0],[-116.92,46.0]],      // WA–OR
+    [[-117.04,49.0],[-117.04,46.4],[-116.92,46.0],[-116.5,45.5],[-117.0,44.3],[-117.03,42.0]], // WA/OR–ID
+    [[-124.2,42.0],[-111.05,42.0]],                                                 // 42nd parallel
+    [[-120.0,42.0],[-120.0,39.0],[-114.63,35.0],[-114.6,34.3],[-114.7,32.7]],       // CA–NV/AZ
+    [[-116.05,49.0],[-116.05,47.97],[-115.7,47.4],[-114.6,46.6],[-114.4,45.6],[-113.0,44.4],[-111.05,44.5]], // ID–MT
+    [[-111.05,44.5],[-111.05,41.0],[-109.05,41.0]],                                 // ID/UT–WY
+    [[-111.05,45.0],[-104.05,45.0],[-104.05,49.0]],                                 // MT–WY, MT–ND
+    [[-104.05,45.0],[-104.05,41.0],[-102.05,41.0],[-102.05,37.0],[-103.0,37.0],[-103.0,32.0]], // WY/CO/NM east
+    [[-114.05,42.0],[-114.05,37.0],[-109.05,37.0]],                                 // NV–UT, UT–AZ
+    [[-109.05,41.0],[-109.05,31.3]],                                                // UT/CO, AZ/NM
+    [[-109.05,37.0],[-102.05,37.0]],                                                // CO–NM
+    [[-117.1,32.5],[-114.8,32.5],[-111.0,31.3],[-108.2,31.3],[-108.2,31.8],[-106.5,31.8]] // US–Mexico
+  ],
+  east: { land: [[-82,49],[-68,49],[-68,44.8],[-70.2,43.6],[-70.8,42.8],[-70.6,41.6],[-71.9,41.3],[-73.7,40.6],[-74.2,39.8],[-82,39.8]],
+    lines: [[[-79.8,43.2],[-76.3,44.2],[-74.7,45.0],[-71.5,45.0],[-71.1,45.3],[-70.2,46.4],[-69.2,47.4],[-68,47.4]],[[-73.3,45.0],[-73.3,42.7],[-71.5,42.7],[-71.5,45.0]],[[-72.5,42.7],[-72.5,45.0]]],
+    lakes: [[[-79.8,43.2],[-78.5,43.4],[-76.9,43.3],[-76.2,43.6],[-76.4,44.1],[-77.5,44.0],[-79.0,43.8],[-79.8,43.6]]],
+    river: [[-76.3,44.2],[-75.3,44.9],[-73.6,45.5],[-72.2,46.3],[-71.2,46.8],[-69.5,48.2],[-68,48.9]] },
+  japan: [
+    [[140.0,41.4],[141.2,41.8],[141.7,42.6],[143.3,42.0],[144.5,42.9],[145.6,43.3],[145.3,44.3],[144.0,44.1],[142.6,44.6],[141.9,45.5],[141.6,45.2],[141.7,44.3],[141.3,43.3],[140.4,43.3],[140.5,42.9],[139.9,42.6],[140.4,42.2],[139.9,41.6]],
+    [[141.4,41.5],[141.6,40.3],[142.0,39.5],[141.5,38.4],[141.0,38.3],[141.0,37.0],[140.6,36.0],[140.9,35.7],[140.4,35.2],[139.8,35.0],[139.1,35.2],[138.8,34.6],[137.6,34.6],[137.0,34.6],[136.8,34.2],[135.8,33.5],[135.1,34.3],[134.0,34.6],[134.3,35.5],[135.2,35.6],[136.0,35.7],[136.7,36.9],[136.8,37.4],[137.3,37.5],[137.0,36.8],[138.2,37.1],[139.2,38.0],[139.8,39.0],[140.0,40.0],[139.9,40.6],[140.3,41.2],[141.0,41.2]]
+  ]
+};
+const CITIES = [["Calgary",-114.07,51.05],["Edmonton",-113.49,53.55],["Vancouver",-123.12,49.28],["Kelowna",-119.5,49.89],["Seattle",-122.33,47.61],["Portland",-122.68,45.52],["Spokane",-117.43,47.66],["Boise",-116.2,43.62],["Salt Lake City",-111.89,40.76],["Denver",-104.99,39.74],["Reno",-119.81,39.53],["San Francisco",-122.42,37.77],["Los Angeles",-118.24,34.05]];
+const CITIES_E = [["Montréal",-73.57,45.5],["Burlington",-73.21,44.48],["Boston",-71.06,42.36],["Toronto",-79.38,43.65]];
+const CITIES_J = [["Sapporo",141.35,43.06],["Tokyo",139.69,35.68],["Nagano",138.19,36.65]];
+const PANELS = {
+  west:  {lon: [-128.5, -102], lat: [32.5, 56.5], w: 340},
+  east:  {lon: [-81, -69],     lat: [41.6, 47.8], w: 166},
+  japan: {lon: [134.5, 146.2], lat: [33.6, 45.8], w: 166}
+};
+function proj(panel){
+  const P = PANELS[panel], latc = (P.lat[0] + P.lat[1]) / 2, kx = Math.cos(latc * Math.PI / 180);
+  const sx = P.w / ((P.lon[1] - P.lon[0]) * kx), h = (P.lat[1] - P.lat[0]) * sx;
+  return {w: P.w, h, f: (lon, lat) => [((lon - P.lon[0]) * kx * sx), ((P.lat[1] - lat) * sx)]};
 }
-function drawMarkers(){
-  if (!mapObj) return;
-  if (mapLayer) mapLayer.remove();
-  const c = hillDaysAll(), bucket = state.bucket || [];
-  mapLayer = L.layerGroup().addTo(mapObj);
-  hills().forEach(h => {
-    if (!h.lat) return;
-    const n = c[h.id] || 0, inB = bucket.includes(h.id);
-    const col = n ? "#ff6a3d" : inB ? "#ffd166" : "#8aa2bd";
-    L.circleMarker([h.lat, h.lon], {radius: n ? Math.min(14, 6 + Math.sqrt(n) * 1.6) : 6, color: "#0b1d33", weight: 2, fillColor: col, fillOpacity: n || inB ? .95 : .6})
-      .bindPopup(`<b>${esc(h.name)}</b>${h.area ? ` · ${esc(h.area)}` : ""}<br>${n ? `${n} day${n>1?"s":""} skied` : "Not skied yet"}<br><button data-bucket="${h.id}">${inB ? "Remove from bucket list" : "🎯 Add to bucket list"}</button>`)
-      .addTo(mapLayer);
+const panelOf = h => h.region === "japan" ? "japan" : h.region === "east" ? "east" : "west";
+const ptsStr = (pr, arr) => arr.map(([lo, la]) => pr.f(lo, la).map(v => v.toFixed(1)).join(",")).join(" ");
+let mapVB = null, mapSel = null, mapDrag = null;
+function baseSVG(panel){
+  const pr = proj(panel), ocean = "#0e2a49", land = "#1d3b60", line = "rgba(159,220,255,.28)", coastC = "rgba(159,220,255,.55)";
+  let g = "";
+  if (panel === "west"){
+    const landPoly = [[-140,62],[-95,62],[-95,30],[-116.9,30]].concat(GEO.coast.slice().reverse()).concat([[-140,56]]);
+    g += `<polygon points="${ptsStr(pr, landPoly)}" fill="${land}"/><polygon points="${ptsStr(pr, GEO.vanIsland)}" fill="${land}" stroke="${coastC}" stroke-width=".8"/>`;
+    g += `<polyline points="${ptsStr(pr, GEO.coast)}" fill="none" stroke="${coastC}" stroke-width=".9"/>`;
+    g += GEO.lines.map((l, i) => `<polyline points="${ptsStr(pr, l)}" fill="none" stroke="${i === 0 ? "rgba(159,220,255,.55)" : line}" stroke-width="${i === 0 ? 1.3 : .8}" ${i === 0 ? "" : 'stroke-dasharray="3 2"'}/>`).join("");
+    const lab = (t, lo, la) => { const [x, y] = pr.f(lo, la); return `<text x="${x}" y="${y}" font-size="9" fill="rgba(163,189,217,.55)" text-anchor="middle" font-weight="700" letter-spacing="1.5">${t}</text>`; };
+    g += lab("BRITISH COLUMBIA", -123.5, 54.2) + lab("ALBERTA", -113.5, 55.2) + lab("SASK.", -106, 54.5) + lab("WA", -120.3, 47.6) + lab("OR", -120.5, 43.8) + lab("CA", -119.6, 37.5) + lab("NV", -116.8, 39.4) + lab("ID", -114.6, 43.4) + lab("MT", -109.5, 47.2) + lab("WY", -107.6, 43.2) + lab("UT", -111.6, 38.8) + lab("CO", -105.6, 38.4) + lab("NM", -106, 34) + lab("AZ", -111.8, 34.3) + lab("PACIFIC", -127, 44.5);
+  } else if (panel === "east"){
+    g += `<polygon points="${ptsStr(pr, GEO.east.land)}" fill="${land}" stroke="${coastC}" stroke-width=".8"/>`;
+    g += GEO.east.lakes.map(l => `<polygon points="${ptsStr(pr, l)}" fill="${ocean}" stroke="${coastC}" stroke-width=".7"/>`).join("");
+    g += `<polyline points="${ptsStr(pr, GEO.east.river)}" fill="none" stroke="${coastC}" stroke-width="1.6"/>`;
+    g += GEO.east.lines.map((l, i) => `<polyline points="${ptsStr(pr, l)}" fill="none" stroke="${i === 0 ? "rgba(159,220,255,.55)" : line}" stroke-width="${i === 0 ? 1.2 : .7}" ${i ? 'stroke-dasharray="3 2"' : ""}/>`).join("");
+  } else {
+    g += GEO.japan.map(l => `<polygon points="${ptsStr(pr, l)}" fill="${land}" stroke="${coastC}" stroke-width=".8"/>`).join("");
+  }
+  const cities = panel === "west" ? CITIES : panel === "east" ? CITIES_E : CITIES_J;
+  g += cities.map(([n, lo, la]) => { const [x, y] = pr.f(lo, la); return `<circle cx="${x}" cy="${y}" r="1.6" fill="#a3bdd9"/><text x="${x + 3}" y="${y - 2.5}" font-size="${panel === "west" ? 8 : 7.5}" fill="#a3bdd9">${n}</text>`; }).join("");
+  if (panel === "west" && usingLoc && usingLoc()){ const [x, y] = pr.f(myPos.lon, myPos.lat); g += `<circle cx="${x}" cy="${y}" r="4" fill="#5fb3ff" stroke="#fff" stroke-width="1.5"/>`; }
+  return {pr, g, ocean};
+}
+function renderMap(){
+  if (!$("hillMap")) return;
+  renderScopeChips(); renderMapInfo(); renderTravel(); renderPassport();
+  if ($("mapWest")){ if (!replaying) drawMarkers(); renderSel(); return; }   // already built: just refresh dots
+  const W = baseSVG("west"), E = baseSVG("east"), J = baseSVG("japan");
+  if (!mapVB) mapVB = {x: W.pr.f(-121, 0)[0] - 10, y: W.pr.f(0, 54.5)[1], w: 180, h: 180 * W.pr.h / W.pr.w};  // start zoomed on Alberta & BC
+  $("hillMap").innerHTML = `
+    <div style="position:relative">
+      <svg id="mapWest" viewBox="${mapVB.x} ${mapVB.y} ${mapVB.w} ${mapVB.h}" style="width:100%;height:auto;display:block;background:${W.ocean};border-radius:12px;touch-action:none">
+        <g>${W.g}</g><g id="routeWest"></g><g id="marksWest"></g></svg>
+      <div id="replayBox"></div>
+      <div class="mapBtns"><button data-z="in">+</button><button data-z="out">−</button><button data-z="home" title="Alberta & BC">⌂</button><button data-z="all" title="Whole map">⤢</button></div>
+    </div>
+    <div class="insets">
+      <div><div class="insetLab">Eastern N. America</div><svg id="mapEast" viewBox="0 0 ${E.pr.w} ${E.pr.h}" style="width:100%;display:block;background:${E.ocean};border-radius:10px"><g>${E.g}</g><g id="routeEast"></g><g id="marksEast"></g></svg></div>
+      <div><div class="insetLab">Japan</div><svg id="mapJapan" viewBox="0 0 ${J.pr.w} ${J.pr.h}" style="width:100%;display:block;background:${J.ocean};border-radius:10px"><g>${J.g}</g><g id="routeJapan"></g><g id="marksJapan"></g></svg></div>
+    </div>
+    <div id="mapSel"></div>`;
+  $("hillMap").style.height = "auto"; $("hillMap").style.background = "none";
+  wireMap(); drawMarkers();
+  const st = $("mapStatus"); if (st) st.textContent = "Built-in map · drag to move, + / − to zoom, tap a hill for details";
+}
+function setVB(){ const s = $("mapWest"); if (s) s.setAttribute("viewBox", `${mapVB.x} ${mapVB.y} ${mapVB.w} ${mapVB.h}`); drawMarkers(); }
+function wireMap(){
+  const svg = $("mapWest"), pr = proj("west"), aspect = pr.h / pr.w;
+  const zoom = (k, cx, cy) => { const nw = Math.min(pr.w * 1.05, Math.max(40, mapVB.w * k)), nh = nw * aspect;
+    cx = cx ?? mapVB.x + mapVB.w / 2; cy = cy ?? mapVB.y + mapVB.h / 2;
+    mapVB = {x: cx - (cx - mapVB.x) * nw / mapVB.w, y: cy - (cy - mapVB.y) * nh / mapVB.h, w: nw, h: nh}; setVB(); };
+  $("hillMap").querySelectorAll(".mapBtns button").forEach(b => b.onclick = () => {
+    const z = b.dataset.z;
+    if (z === "in") zoom(.7); else if (z === "out") zoom(1 / .7);
+    else if (z === "home"){ mapVB = {x: pr.f(-121, 0)[0] - 10, y: pr.f(0, 54.5)[1], w: 180, h: 180 * aspect}; setVB(); }
+    else { mapVB = {x: 0, y: 0, w: pr.w, h: pr.h}; setVB(); }
   });
+  const pts = new Map(); let pinch0 = null;
+  const toSvg = (e) => { const r = svg.getBoundingClientRect(); return [mapVB.x + (e.clientX - r.left) / r.width * mapVB.w, mapVB.y + (e.clientY - r.top) / r.height * mapVB.h]; };
+  svg.addEventListener("pointerdown", e => { pts.set(e.pointerId, e); if (pts.size === 1) mapDrag = {x: e.clientX, y: e.clientY, vb: {...mapVB}, moved: false};
+    if (pts.size === 2){ const [a, b] = [...pts.values()]; pinch0 = {d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), vb: {...mapVB}}; } });
+  svg.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, e);
+    const r = svg.getBoundingClientRect();
+    if (pts.size === 2 && pinch0){ const [a, b] = [...pts.values()], d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const k = pinch0.d / Math.max(10, d), c = toSvg({clientX: (a.clientX + b.clientX) / 2, clientY: (a.clientY + b.clientY) / 2});
+      mapVB = {...pinch0.vb}; zoom(k, c[0], c[1]); if (mapDrag) mapDrag.moved = true; return; }
+    if (!mapDrag) return;
+    const dx = (e.clientX - mapDrag.x) / r.width * mapDrag.vb.w, dy = (e.clientY - mapDrag.y) / r.height * mapDrag.vb.h;
+    if (Math.abs(e.clientX - mapDrag.x) + Math.abs(e.clientY - mapDrag.y) > 4) mapDrag.moved = true;
+    mapVB.x = mapDrag.vb.x - dx; mapVB.y = mapDrag.vb.y - dy;
+    svg.setAttribute("viewBox", `${mapVB.x} ${mapVB.y} ${mapVB.w} ${mapVB.h}`);
+  });
+  const end = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch0 = null; if (!pts.size){ if (mapDrag && mapDrag.moved) drawMarkers(); setTimeout(() => mapDrag = null, 0); } };
+  svg.addEventListener("pointerup", end); svg.addEventListener("pointercancel", end);
+  $("hillMap").addEventListener("click", e => {
+    const m = e.target.closest("[data-hill]"); if (!m || (mapDrag && mapDrag.moved)) return;
+    mapSel = m.dataset.hill; renderSel();
+  });
+}
+function renderSel(){
+  const el = $("mapSel"); if (!el) return;
+  if (!mapSel){ el.innerHTML = ""; return; }
+  const h = hillById(mapSel), n = hillDaysAll()[h.id] || 0, inB = (state.bucket || []).includes(h.id), r = reportFor(h.id);
+  el.innerHTML = `<div class="selCard"><div style="flex:1;min-width:0"><b class="display" style="font-size:22px">${esc(h.name)}</b> <span class="mute small">${esc(h.area || "")}</span>
+    <div class="mute small">${n ? `${n} day${n > 1 ? "s" : ""} skied` : "Not skied yet"}${r ? ` · ❄️ ${r.snow24} cm 24h` : ""}</div></div>
+    <button id="selBucket" style="flex:0 0 auto;padding:6px 10px;font-size:13px">${inB ? "Remove from bucket list" : "🎯 Bucket list"}</button></div>`;
+  $("selBucket").onclick = () => { state.bucket = state.bucket || []; state.bucket = inB ? state.bucket.filter(x => x !== h.id) : state.bucket.concat(h.id); save(); drawMarkers(); renderMapInfo(); renderSel(); };
+}
+function drawMarkers(highlight){
+  if (!$("marksWest")) return;
+  const c = hillDaysAll(), bucket = state.bucket || [];
+  const scaleW = mapVB ? mapVB.w / proj("west").w : 1;   // keep dots the same size on screen while zoomed
+  const out = {west: "", east: "", japan: ""};
+  hills().filter(h => h.lat).sort((a, b) => (c[a.id] || 0) - (c[b.id] || 0)).forEach(h => {
+    const p = panelOf(h), pr = proj(p), [x, y] = pr.f(h.lon, h.lat), n = c[h.id] || 0, inB = bucket.includes(h.id);
+    const s = p === "west" ? Math.max(.35, scaleW) : 1;
+    const r = (n ? Math.min(9, 4 + Math.sqrt(n) * 1.3) : 3.2) * s;
+    const col = n ? "#ff6a3d" : inB ? "#ffd166" : "#8aa2bd";
+    out[p] += `<g data-hill="${h.id}" style="cursor:pointer"><circle cx="${x}" cy="${y}" r="${(r + 6 * s).toFixed(2)}" fill="transparent"/>
+      <circle cx="${x}" cy="${y}" r="${r.toFixed(2)}" fill="${col}" stroke="#0b1d33" stroke-width="${(1.2 * s).toFixed(2)}" opacity="${n || inB ? 1 : .75}"/>
+      ${n && (p !== "west" || scaleW < .8) ? `<text x="${x}" y="${y - r - 2 * s}" font-size="${(7.5 * s).toFixed(2)}" fill="#f6f9fc" text-anchor="middle" font-weight="700">${esc(h.name.replace(/ \(.*\)/, ""))}</text>` : ""}</g>`;
+  });
+  $("marksWest").innerHTML = out.west; $("marksEast").innerHTML = out.east; $("marksJapan").innerHTML = out.japan;
+}
+
+// ---------- Season replay on the built-in map ----------
+let replaying = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function replay(){
+  if (replaying){ replaying = false; return; }
+  if (!$("marksWest")) return;
+  const days = scopeDays().slice().sort((a, b) => a.date.localeCompare(b.date)).filter(d => hillById(d.hill).lat);
+  if (!days.length) return toast("Log some days to replay them");
+  replaying = true; $("replayBtn").textContent = "■ Stop";
+  // frame the western hills you skied
+  const pr = proj("west"), west = days.map(d => hillById(d.hill)).filter(h => panelOf(h) === "west").map(h => pr.f(h.lon, h.lat));
+  if (west.length){ const xs = west.map(p => p[0]), ys = west.map(p => p[1]), aspect = pr.h / pr.w;
+    let w = Math.max(70, (Math.max(...xs) - Math.min(...xs)) * 1.6, (Math.max(...ys) - Math.min(...ys)) * 1.6 / aspect);
+    w = Math.min(w, pr.w * 1.05); const h = w * aspect;
+    mapVB = {x: (Math.max(...xs) + Math.min(...xs)) / 2 - w / 2, y: (Math.max(...ys) + Math.min(...ys)) / 2 - h / 2, w, h}; setVB(); }
+  ["routeWest","routeEast","routeJapan"].forEach(id => $(id).innerHTML = "");
+  const counts = {}, box = $("replayBox"), step = Math.max(160, Math.min(650, 12000 / days.length));
+  ["marksWest","marksEast","marksJapan"].forEach(id => $(id).style.opacity = ".25");
+  box.style.display = "block";
+  let prev = null;
+  for (let i = 0; i < days.length && replaying; i++){
+    const d = days[i], h = hillById(d.hill), p = panelOf(h), P = proj(p), [x, y] = P.f(h.lon, h.lat);
+    const gid = {west: "routeWest", east: "routeEast", japan: "routeJapan"}[p], s = p === "west" ? Math.max(.35, mapVB.w / pr.w) : 1;
+    let flew = "";
+    if (prev && prev.hill !== d.hill){
+      const a = hillById(prev.hill);
+      if (panelOf(a) === p){ const [ax, ay] = P.f(a.lon, a.lat);
+        $(gid).insertAdjacentHTML("beforeend", `<line x1="${ax}" y1="${ay}" x2="${x}" y2="${y}" stroke="#ffd166" stroke-width="${1.6 * s}" stroke-dasharray="${4 * s} ${3 * s}" opacity=".9"/>`); }
+      else flew = " · ✈️";
+    }
+    counts[d.hill] = (counts[d.hill] || 0) + 1;
+    const r = Math.min(9, 4 + Math.sqrt(counts[d.hill]) * 1.3) * s;
+    $(gid).insertAdjacentHTML("beforeend", `<circle cx="${x}" cy="${y}" r="${r}" fill="${isPow(d.cond) ? "#9fdcff" : "#ff6a3d"}" stroke="#0b1d33" stroke-width="${s}"/>
+      <circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#fff" stroke-width="${2 * s}"><animate attributeName="r" from="${r}" to="${r + 14 * s}" dur=".6s" fill="freeze"/><animate attributeName="opacity" from="1" to="0" dur=".6s" fill="freeze"/></circle>`);
+    box.innerHTML = `<div class="mute small">${parseYmd(d.date).toLocaleDateString("en-CA", {weekday:"short", month:"short", day:"numeric", year:"numeric"})}</div>
+      <div class="display">Day ${i + 1} · ${esc(h.name)}${flew}${isPow(d.cond) ? ' <span class="powBadge" style="font-size:12px">POW</span>' : ""}</div>`;
+    prev = d; await sleep(step);
+  }
+  const hillsN = Object.keys(counts).length;
+  box.innerHTML = `<div class="mute small">${mapScope === "all" ? "All-time" : currentSeason} replay</div><div class="display">${Object.values(counts).reduce((a, b) => a + b, 0)} days · ${hillsN} hill${hillsN > 1 ? "s" : ""}</div>`;
+  replaying = false; $("replayBtn").textContent = "▶ Replay";
+  await sleep(3500);
+  if (!replaying){ box.style.display = "none"; ["routeWest","routeEast","routeJapan"].forEach(id => $(id) && ($(id).innerHTML = "")); ["marksWest","marksEast","marksJapan"].forEach(id => $(id) && ($(id).style.opacity = "")); drawMarkers(); }
+}
+$("replayBtn").onclick = replay;
+
+// ---------- Ski passport stamps ----------
+const REGION_COL = {rockies: "#ff6a3d", uswest: "#3d8fe0", east: "#2fbf71", japan: "#e0467a"};
+function stampSVG(h, n, first, k){
+  let sd = [...h.id].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) % 2147483647 || 1;
+  const rot = ((sd % 21) - 10), col = REGION_COL[regionOf(h)] || "#ff6a3d", id = "sp" + k;
+  const name = h.name.toUpperCase().replace(/[()]/g, "").slice(0, 22);
+  const sub = (h.area || "").toUpperCase();
+  return `<svg viewBox="0 0 120 120" aria-label="${esc(h.name)} stamp">
+    <g transform="rotate(${rot} 60 60)" opacity=".92">
+      <circle cx="60" cy="60" r="54" fill="none" stroke="${col}" stroke-width="3"/>
+      <circle cx="60" cy="60" r="47" fill="none" stroke="${col}" stroke-width="1.2" stroke-dasharray="2 3"/>
+      <circle cx="60" cy="60" r="33" fill="${col}" opacity=".14"/>
+      <defs><path id="${id}" d="M60,60 m-41,0 a41,41 0 1,1 82,0 a41,41 0 1,1 -82,0"/></defs>
+      <text font-size="9.5" font-weight="800" letter-spacing="1.4" fill="${col}"><textPath href="#${id}" startOffset="25%" text-anchor="middle">${esc(name)}</textPath></text>
+      <path d="M38 64 L50 48 L56 56 L62 46 L82 64 Z" fill="${col}" opacity=".85"/>
+      <path d="M50 48 L53 52 L51 54 L48 51 Z M62 46 L66 51 L63 53 L60 50 Z" fill="#fff" opacity=".9"/>
+      <text x="60" y="80" text-anchor="middle" font-size="15" font-family="Bebas Neue, Impact, sans-serif" fill="${col}">${n} DAY${n > 1 ? "S" : ""}</text>
+      <text x="60" y="91" text-anchor="middle" font-size="7" font-weight="700" fill="${col}">${first ? "SINCE " + parseYmd(first).toLocaleDateString("en-CA", {month:"short", year:"numeric"}).toUpperCase() : sub}</text>
+    </g></svg>`;
+}
+function renderPassport(){
+  const el = $("passport"); if (!el) return;
+  const c = hillDaysAll();
+  const firstDate = {}; scopeDays().slice().sort((a,b) => a.date.localeCompare(b.date)).forEach(d => { if (!firstDate[d.hill]) firstDate[d.hill] = d.date; });
+  const visited = hills().filter(h => c[h.id]).sort((a,b) => (firstDate[a.id] || "9").localeCompare(firstDate[b.id] || "9"));
+  const groups = [["Alberta", h => h.area === "AB"], ["British Columbia", h => h.area === "BC"], ["Western USA", h => regionOf(h) === "uswest"], ["Eastern N. America", h => regionOf(h) === "east"], ["Japan", h => regionOf(h) === "japan"]];
+  const bars = groups.map(([name, f]) => { const all = hills().filter(f), got = all.filter(h => c[h.id]).length;
+    return `<div class="regionBar"><span>${name}</span><div class="track"><div class="bar" style="width:${Math.max(got ? 6 : 0, got / all.length * 100)}%"></div></div><b>${got}/${all.length}</b></div>`; }).join("");
+  el.innerHTML = `<div class="mute small"><b style="color:var(--ink)">${visited.length}</b> of ${hills().length} hills stamped${mapScope === "season" ? ` in ${currentSeason}` : ""}</div>
+    ${visited.length ? `<div class="stamps">${visited.map((h, k) => stampSVG(h, c[h.id], firstDate[h.id], k)).join("")}</div>` : `<div class="empty" style="margin-top:8px"><span class="display">Passport's empty</span>Every new hill you ski earns a stamp.</div>`}
+    <div style="margin-top:10px">${bars}</div>`;
 }
 
 // ---------- Snowpack chart: home hill depth, this season vs last ----------
@@ -1265,6 +1527,42 @@ async function renderSnowpack(){
   };
   const hit = $("packHit"); ["mousemove","touchstart","touchmove"].forEach(e => hit.addEventListener(e, move, {passive: true}));
   hit.addEventListener("mouseleave", () => { tip.style.display = "none"; xl.style.display = "none"; });
+}
+
+
+// ---------- Crash log ----------
+const CRASH_TYPES = ["🧦 Yard sale", "🤕 Face plant", "🌀 Tomahawk", "🌲 Tree hug", "🧊 Ice slide", "🚡 Lift fail", "🏂 Took out by a boarder", "😅 Slow-mo tip over"];
+let editCrash = {yn: "", n: 1, types: [], note: ""};
+function renderCrash(){
+  document.querySelectorAll("#fCrashYN button").forEach(b => b.classList.toggle("on", b.dataset.c === editCrash.yn));
+  $("fCrashBox").style.display = editCrash.yn === "yes" ? "" : "none";
+  $("cCount").textContent = editCrash.n;
+  $("fCrashTypes").innerHTML = CRASH_TYPES.map(t => `<button class="chip ${editCrash.types.includes(t) ? "on" : ""}" data-t="${esc(t)}">${esc(t)}</button>`).join("");
+  $("fCrashTypes").querySelectorAll("button").forEach(b => b.onclick = () => {
+    const t = b.dataset.t; editCrash.types = editCrash.types.includes(t) ? editCrash.types.filter(x => x !== t) : editCrash.types.concat(t); renderCrash(); });
+}
+document.querySelectorAll("#fCrashYN button").forEach(b => b.onclick = () => { editCrash.yn = b.dataset.c; if (editCrash.yn === "yes" && !editCrash.n) editCrash.n = 1; renderCrash(); });
+$("cMinus").onclick = () => { editCrash.n = Math.max(1, editCrash.n - 1); renderCrash(); };
+$("cPlus").onclick = () => { editCrash.n = Math.min(99, editCrash.n + 1); renderCrash(); };
+function loadCrash(day){
+  const c = day && day.crash;
+  editCrash = c == null ? {yn: "", n: 1, types: [], note: ""} : c.n > 0 ? {yn: "yes", n: c.n, types: (c.types || []).slice(), note: c.note || ""} : {yn: "no", n: 1, types: [], note: ""};
+  $("fCrashNote").value = editCrash.note; renderCrash();
+}
+function crashValue(){
+  if (editCrash.yn === "yes") return {n: editCrash.n, types: editCrash.types.slice(), note: $("fCrashNote").value.trim()};
+  if (editCrash.yn === "no") return {n: 0};
+  return null;
+}
+function crashLine(d){
+  const c = d.crash; if (!c) return "";
+  if (!c.n) return `<div class="crashLine">🛡️ Clean day, no crashes</div>`;
+  return `<div class="crashLine">💥 <b>${c.n} crash${c.n > 1 ? "es" : ""}</b>${c.types && c.types.length ? " · " + esc(c.types.join(", ")) : ""}${c.note ? ` · “${esc(c.note)}”` : ""}</div>`;
+}
+function cleanStreak(days){
+  let best = 0, cur = 0;
+  days.slice().sort((a, b) => a.date.localeCompare(b.date)).forEach(d => { if (d.crash && d.crash.n === 0){ cur++; best = Math.max(best, cur); } else if (d.crash) cur = 0; });
+  return best;
 }
 
 // ---------- Leaderboards: best pow in North America + Japan ----------
@@ -1553,7 +1851,14 @@ function renderStatsView(){
     rec("Hills skied", S.hills || "–", "this season") +
     rec("Epic days", S.epic || "–", "rated ❄❄❄❄❄") +
     rec("Weekend / weekday", S.logged ? `${S.weekend} / ${S.logged - S.weekend}` : "–", "logged days") +
-    rec("All-time", allTime || "–", best ? `best: ${best[0]} (${best[1]})` : "");
+    rec("All-time", allTime || "–", best ? `best: ${best[0]} (${best[1]})` : "") +
+    (() => { const sd = seasonDays(currentSeason), answered = sd.filter(d => d.crash), crashes = answered.reduce((a, d) => a + d.crash.n, 0);
+      const worst = answered.filter(d => d.crash.n).sort((a, b) => b.crash.n - a.crash.n)[0], clean = answered.filter(d => !d.crash.n).length;
+      const types = {}; answered.forEach(d => (d.crash.types || []).forEach(t => types[t] = (types[t] || 0) + 1));
+      const fav = Object.entries(types).sort((a, b) => b[1] - a[1])[0];
+      return rec("Crashes", answered.length ? crashes : "–", answered.length ? `${clean} clean day${clean === 1 ? "" : "s"}${fav ? ` · top: ${esc(fav[0])}` : ""}` : "log them on any day") +
+             rec("Worst wipeout day", worst ? `${worst.crash.n} 💥` : "–", worst ? `${esc(hillById(worst.hill).name)} · ${fmtDate(worst.date)}` : (answered.length ? "none yet 🛡️" : ""));
+    })();
   renderHeatmap(); renderCompare(); renderBuddyStats(S); renderBadges(); if ($("viewStats").style.display !== "none"){ renderMap(); renderSnowpack(); }
 }
 function renderHeatmap(){
