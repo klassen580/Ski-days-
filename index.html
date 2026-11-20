@@ -228,6 +228,25 @@ a{color:var(--accent2)}
 .regionBar{display:grid;grid-template-columns:130px 1fr 44px;gap:8px;align-items:center;font-size:13px;margin:6px 0}
 .crashLine{font-size:12px;margin-top:4px;color:#4a6584}
 .crashLine b{color:#d8452a}
+.tItem{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}
+.tItem:first-child{border-top:none}
+.tItem.done b,.packList .tItem.done div{opacity:.6}
+.tCheck,.tDel{flex:0 0 auto;background:none;border:none;padding:2px 4px;font-size:18px}
+.tDel{color:var(--mute);font-size:15px}
+.tAdd{margin-top:10px;padding:10px;border:1px dashed var(--line);border-radius:12px;display:grid;gap:6px}
+.tripPhotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tp{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--bg2)}
+.tp img{width:100%;height:100%;object-fit:cover;display:block}
+.tp button{position:absolute;top:4px;right:4px;width:24px;height:24px;padding:0;border-radius:50%;font-size:12px;background:rgba(0,0,0,.6);border:none;color:#fff}
+.tpAdd{aspect-ratio:1;border:2px dashed var(--line);background:none;border-radius:10px;font-size:26px;line-height:1.2;color:var(--mute)}
+.tripThumb{width:52px;height:52px;object-fit:cover;border-radius:10px;flex:0 0 auto}
+#photoView{align-items:center}
+#photoView img{max-width:94vw;max-height:86vh;border-radius:12px}
+.recCard{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.recRow{display:block;padding:7px 0;border-top:1px solid var(--line);text-decoration:none;color:var(--ink)}
+.recRow:first-of-type{border-top:none}
+.recRow b{display:block;font-size:14px;font-weight:600;line-height:1.3}
+a.chip{text-decoration:none;color:var(--ink);background:var(--bg2);border:1px solid var(--line)}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
 .stakeCard{display:flex;gap:6px;align-items:center;padding:12px 14px 6px 4px}
 .stake{flex:0 0 auto}
@@ -314,7 +333,7 @@ a{color:var(--accent2)}
   </div>
   </div>
   <p class="mute small" style="margin-top:16px">Snow &amp; weather: modelled data from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> at each hill's mid-mountain elevation. Use the hill's own report for official numbers.</p>
-  <p class="mute small" style="text-align:center;margin-top:4px">Ski Days · version 2026-11-20h (trail maps)</p>
+  <p class="mute small" style="text-align:center;margin-top:4px">Ski Days · version 2026-11-20j (trip planner + recs)</p>
 </div>
 
 <!-- Edit / add day -->
@@ -405,12 +424,11 @@ a{color:var(--accent2)}
 <!-- Trip -->
 <div class="modal" id="tripModal"><div class="sheet">
   <h2 class="display" id="tripTitle">Plan a trip</h2>
-  <label>Trip name</label><input id="tName" placeholder="e.g. Japan powder week">
-  <label>Hill</label><select id="tHill"></select>
-  <div class="row"><div><label>Start</label><input type="date" id="tStart"></div><div><label>End</label><input type="date" id="tEnd"></div></div>
-  <label>Notes</label><textarea id="tNotes" placeholder="Flights, lodging, who's coming..."></textarea>
+  <div class="chips" id="tTabs" style="margin-top:4px"></div>
+  <div id="tPane"></div>
   <div class="row" style="margin-top:14px"><button class="danger" id="tDelete">Delete</button><button id="tCancel">Cancel</button><button class="primary" id="tSave">Save</button></div>
 </div></div>
+<div class="modal" id="photoView"></div>
 
 <!-- Recap -->
 <div class="modal" id="recapModal"><div class="sheet">
@@ -1113,14 +1131,16 @@ function renderTrips(){
     const cd = on ? `<b class="display">NOW</b><span>on trip</span>` : done ? `<b class="display">✓</b><span>done</span>` : `<b class="display">${n}</b><span>day${n===1?"":"s"}</span>`;
     const r = reportFor(t.hill);
     const fc = !done && r && r.week && n <= 6 ? (() => { const s = r.week.filter(w => w.date >= t.start && w.date <= t.end).reduce((a,w) => a + w.s, 0); return s ? ` · ❄️ ~${Math.round(s)} cm forecast` : ""; })() : "";
-    return `<div class="tripRow" data-trip="${t.id}"><div class="cd">${cd}</div>
+    return `<div class="tripRow" data-trip="${t.id}"><div class="cd">${cd}</div>${t.photos && t.photos.length ? `<img class="tripThumb" data-photo="${t.photos[0]}" alt="">` : ""}
       <div style="flex:1;min-width:0"><b class="display" style="font-size:22px">${esc(t.name || hillById(t.hill).name)}</b>
       <div class="mute small">${esc(hillById(t.hill).name)} · ${fmtDate(t.start)}${t.end !== t.start ? `–${fmtDate(t.end)}` : ""} (${tripDays} day${tripDays>1?"s":""})${fc}</div>
+      ${tripSummary(t)}
       ${(done || on) && logged < tripDays ? `<button class="logTrip" data-trip="${t.id}" style="margin-top:6px;padding:5px 10px;font-size:13px">🎟️ Log trip days (${logged}/${tripDays})</button>` : ""}</div></div>`;
   }).join("");
   el.innerHTML = `<div class="card"><div class="row"><div class="signTag">✈️ Trips</div><button id="tripAdd" style="flex:0 0 auto;padding:6px 10px" class="small">+ Plan a trip</button></div>
     ${rows || `<div class="mute small" style="margin-top:6px">Plan a ski trip to get a countdown and its snow forecast as it gets close.</div>`}</div>`;
   $("tripAdd").onclick = () => openTrip(null);
+  loadThumbs();
   el.querySelectorAll(".tripRow").forEach(r => r.onclick = e => { if (e.target.closest(".logTrip")) return; openTrip(state.trips.find(t => t.id === r.dataset.trip)); });
   el.querySelectorAll(".logTrip").forEach(b => b.onclick = async e => {
     e.stopPropagation(); const t = state.trips.find(x => x.id === b.dataset.trip), added = [];
@@ -1133,24 +1153,175 @@ function renderTrips(){
     for (const d of added) await refreshDay(d, true);
   });
 }
+
+// ---------- Recommendations from Reddit & forums ----------
+const recCache = {};
+function recQuery(h, c){ return `${h.name.replace(/ \(.*\)/, "")} ${c.q}`; }
+function forumLinks(h, c){
+  const q = recQuery(h, c), g = extra => `https://www.google.com/search?q=${encodeURIComponent(q + " " + extra)}`;
+  const links = [
+    ["Reddit", `https://www.reddit.com/search/?q=${encodeURIComponent(q)}`],
+    ["Ski forums", g("(site:tetongravity.com OR site:skitalk.com OR site:snowheads.com)")],
+    ["TripAdvisor forums", g("site:tripadvisor.com ShowTopic")]
+  ];
+  if (h.region === "japan") links.push(["Japan Guide forum", g("site:japan-guide.com forum")]);
+  return links.map(([n, u]) => `<a class="chip" href="${u}" target="_blank" rel="noopener">${n} ↗</a>`).join("");
+}
+function recsHTML(h, c){
+  const q = recQuery(h, c), r = recCache[q];
+  const list = !r ? `<div class="mute small">Searching Reddit…</div>`
+    : r === "fail" ? `<div class="mute small">Couldn't load Reddit right now. Use the links below.</div>`
+    : !r.length ? `<div class="mute small">No Reddit threads found. Try the forum links.</div>`
+    : r.map(t => `<a class="recRow" href="https://www.reddit.com${t.permalink}" target="_blank" rel="noopener">
+        <b>${esc(t.title)}</b><span class="mute small">r/${esc(t.subreddit)} · ▲ ${t.score.toLocaleString()} · 💬 ${t.num_comments.toLocaleString()}${t.created ? ` · ${new Date(t.created * 1000).getFullYear()}` : ""}</span></a>`).join("");
+  return `<div class="recCard"><div class="signTag" style="margin-bottom:6px">💬 What people recommend</div>${list}
+    <div class="chips" style="margin-top:8px">${forumLinks(h, c)}</div></div>`;
+}
+async function loadRecs(h, c){
+  const q = recQuery(h, c);
+  if (recCache[q]) return;
+  try {
+    const r = await fetch(`https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=relevance&t=all&limit=12&raw_json=1`);
+    if (!r.ok) throw 0;
+    const j = await r.json();
+    recCache[q] = (j.data && j.data.children || []).map(x => x.data).filter(d => d && !d.over_18 && d.title)
+      .sort((a, b) => (b.score + b.num_comments * 2) - (a.score + a.num_comments * 2)).slice(0, 5)
+      .map(d => ({title: d.title, subreddit: d.subreddit, permalink: d.permalink, score: d.score || 0, num_comments: d.num_comments || 0, created: d.created_utc}));
+  } catch(e){ recCache[q] = "fail"; }
+  if ($("recBox") && LIST_CFG[tripTab] && recQuery(hillById(tripDraft.hill), LIST_CFG[tripTab]) === q) $("recBox").innerHTML = recsHTML(h, c);
+}
+
+// ---------- Trip planner: details, stay, eat, do, pack, photos ----------
+const TRIP_TABS = [["details","📝 Details"],["stay","🏨 Stay"],["eat","🍽️ Eat"],["do","✨ Do"],["pack","🎒 Pack"],["photos","📷 Photos"]];
+const LIST_CFG = {
+  stay: {title: "Where to stay", ph: "Hotel, condo or cabin", check: "Booked", maps: "hotels", price: true, q: "where to stay"},
+  eat:  {title: "Restaurants to try", ph: "Restaurant, café or bar", check: "Tried", maps: "restaurants", q: "best restaurants"},
+  do:   {title: "Ideas & activities", ph: "Hot springs, après, sightseeing…", check: "Done", maps: "things to do", q: "apres things to do"}
+};
+const PACK_DEFAULT = ["Skis or board","Boots","Poles","Helmet","Goggles","Gloves or mitts","Base layers","Mid layer","Shell jacket & pants","Neck warmer","Ski socks","Pass or lift tickets","Sunscreen & lip balm","Phone charger","Hand warmers","Snacks & water","Wax & tune kit","Après outfit"];
+let tripDraft = null, tripTab = "details", tripNewPhotos = [], tripDropPhotos = [];
+const nightsOf = t => Math.max(0, Math.round((parseYmd(t.end) - parseYmd(t.start)) / 864e5));
+function syncDetails(){
+  if (!tripDraft || !$("tName")) return;
+  Object.assign(tripDraft, {name: $("tName").value.trim(), hill: $("tHill").value, start: $("tStart").value, end: $("tEnd").value || $("tStart").value, notes: $("tNotes").value.trim()});
+}
 function openTrip(t){
   editingTrip = t;
+  tripDraft = t ? JSON.parse(JSON.stringify(t)) : {id: "trip" + Date.now().toString(36), name: "", hill: homeHill(), start: addDays(todayStr(), 7), end: addDays(todayStr(), 9), notes: ""};
+  tripDraft.items = Object.assign({stay: [], eat: [], do: []}, tripDraft.items || {});
+  tripDraft.pack = tripDraft.pack || PACK_DEFAULT.map(t => ({t, done: false}));
+  tripDraft.photos = tripDraft.photos || [];
+  tripNewPhotos = []; tripDropPhotos = []; tripTab = "details";
   $("tripTitle").textContent = t ? "Edit trip" : "Plan a trip";
-  $("tName").value = t ? t.name : ""; $("tHill").innerHTML = hillOptions(t ? t.hill : homeHill());
-  $("tStart").value = t ? t.start : addDays(todayStr(), 7); $("tEnd").value = t ? t.end : addDays(todayStr(), 9);
-  $("tNotes").value = t ? (t.notes || "") : ""; $("tDelete").style.display = t ? "" : "none";
+  $("tDelete").style.display = t ? "" : "none";
+  renderTripModal();
   $("tripModal").classList.add("open");
 }
-$("tCancel").onclick = () => $("tripModal").classList.remove("open");
-$("tSave").onclick = () => {
-  const start = $("tStart").value, end = $("tEnd").value || start;
-  if (!start) return toast("Pick a start date"); if (end < start) return toast("End date is before the start");
-  const t = editingTrip || {id: "trip" + Date.now().toString(36)};
-  Object.assign(t, {name: $("tName").value.trim(), hill: $("tHill").value, start, end, notes: $("tNotes").value.trim()});
-  if (!editingTrip) state.trips.push(t);
+function renderTripModal(){
+  $("tTabs").innerHTML = TRIP_TABS.map(([k, l]) => {
+    const n = k === "stay" || k === "eat" || k === "do" ? tripDraft.items[k].length : k === "photos" ? tripDraft.photos.length : k === "pack" ? `${tripDraft.pack.filter(p => p.done).length}/${tripDraft.pack.length}` : "";
+    return `<button class="chip ${tripTab === k ? "on" : ""}" data-k="${k}">${l}${n ? ` <span style="opacity:.75">${n}</span>` : ""}</button>`; }).join("");
+  $("tTabs").querySelectorAll("button").forEach(b => b.onclick = () => { syncDetails(); tripTab = b.dataset.k; renderTripModal(); });
+  const h = hillById(tripDraft.hill), el = $("tPane");
+  const mapsLink = what => `<a href="https://www.google.com/maps/search/${encodeURIComponent(what + " near " + h.name + (h.region === "japan" ? " Japan" : ""))}" target="_blank" rel="noopener">🔎 Find ${what} near ${esc(h.name)} ↗</a>`;
+  if (tripTab === "details"){
+    el.innerHTML = `<label>Trip name</label><input id="tName" placeholder="e.g. Japan powder week" value="${esc(tripDraft.name)}">
+      <label>Hill</label><select id="tHill">${hillOptions(tripDraft.hill)}</select>
+      <div class="row"><div><label>Start</label><input type="date" id="tStart" value="${tripDraft.start}"></div><div><label>End</label><input type="date" id="tEnd" value="${tripDraft.end}"></div></div>
+      <label>Notes</label><textarea id="tNotes" placeholder="Flights, who's coming, confirmation numbers...">${esc(tripDraft.notes || "")}</textarea>
+      ${tripSummary(tripDraft)}`;
+    return;
+  }
+  if (LIST_CFG[tripTab]){
+    const c = LIST_CFG[tripTab], list = tripDraft.items[tripTab];
+    const nights = nightsOf(tripDraft), booked = tripTab === "stay" ? list.filter(i => i.done && i.price) : [];
+    el.innerHTML = `<div class="mute small" style="margin:10px 0 6px">${mapsLink(c.maps)}</div>
+      <div id="recBox">${recsHTML(h, c)}</div>
+      <div class="mute small" style="margin:12px 0 2px;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:11px">Your list</div>
+      ${list.length ? list.map((it, i) => `<div class="tItem ${it.done ? "done" : ""}">
+          <button class="tCheck" data-i="${i}" title="${c.check}">${it.done ? "✅" : "⬜"}</button>
+          <div style="flex:1;min-width:0"><b>${it.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.name)} ↗</a>` : esc(it.name)}</b>
+            ${it.price ? ` <span class="pill" style="font-size:12px">${money(it.price)}/night</span>` : ""}${it.done ? ` <span class="mute small">· ${c.check}</span>` : ""}
+            ${it.note ? `<div class="mute small">${esc(it.note)}</div>` : ""}</div>
+          <button class="tDel" data-i="${i}" aria-label="Remove">✕</button></div>`).join("") : `<div class="mute small" style="padding:6px 0">Nothing saved yet.</div>`}
+      ${booked.length && nights ? `<div class="mute small" style="margin-top:6px">🏨 Booked lodging: <b style="color:var(--ink)">${money(booked.reduce((a, i) => a + i.price, 0) * nights)}</b> for ${nights} night${nights > 1 ? "s" : ""}</div>` : ""}
+      <div class="tAdd">
+        <input id="iName" placeholder="${c.ph}">
+        <input id="iUrl" placeholder="Link (optional)" inputmode="url">
+        ${c.price ? `<input id="iPrice" type="number" min="0" placeholder="$ per night (optional)">` : ""}
+        <input id="iNote" placeholder="Note (optional)">
+        <button class="primary" id="iAdd" style="width:100%;margin-top:6px">+ Add</button>
+      </div>`;
+    loadRecs(h, c);
+    $("iAdd").onclick = () => {
+      const name = $("iName").value.trim(); if (!name) return toast("Give it a name first");
+      let url = $("iUrl").value.trim(); if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+      const price = c.price ? parseFloat($("iPrice").value) || 0 : 0;
+      list.push({name, url, price, note: $("iNote").value.trim(), done: false}); renderTripModal();
+    };
+    el.querySelectorAll(".tCheck").forEach(b => b.onclick = () => { const it = list[+b.dataset.i]; it.done = !it.done; renderTripModal(); });
+    el.querySelectorAll(".tDel").forEach(b => b.onclick = () => { list.splice(+b.dataset.i, 1); renderTripModal(); });
+    return;
+  }
+  if (tripTab === "pack"){
+    const p = tripDraft.pack, done = p.filter(x => x.done).length;
+    el.innerHTML = `<div class="progress ice" style="margin-top:12px"><i style="width:${p.length ? done / p.length * 100 : 0}%"></i></div>
+      <div class="mute small">${done === p.length && p.length ? "🎉 All packed. Go ski!" : `${done} of ${p.length} packed`}</div>
+      <div class="packList">${p.map((x, i) => `<div class="tItem ${x.done ? "done" : ""}"><button class="tCheck" data-i="${i}">${x.done ? "✅" : "⬜"}</button><div style="flex:1">${esc(x.t)}</div><button class="tDel" data-i="${i}" aria-label="Remove">✕</button></div>`).join("")}</div>
+      <div class="row" style="margin-top:8px"><input id="pNew" placeholder="Add an item"><button id="pAdd" style="flex:0 0 auto">+ Add</button></div>
+      <div class="row" style="margin-top:8px"><button id="pReset" class="small">Uncheck all</button></div>`;
+    el.querySelectorAll(".tCheck").forEach(b => b.onclick = () => { p[+b.dataset.i].done = !p[+b.dataset.i].done; renderTripModal(); });
+    el.querySelectorAll(".tDel").forEach(b => b.onclick = () => { p.splice(+b.dataset.i, 1); renderTripModal(); });
+    $("pAdd").onclick = () => { const t = $("pNew").value.trim(); if (!t) return; p.push({t, done: false}); renderTripModal(); };
+    $("pReset").onclick = () => { p.forEach(x => x.done = false); renderTripModal(); };
+    return;
+  }
+  if (tripTab === "photos"){
+    el.innerHTML = `<div class="mute small" style="margin:10px 0 6px">Trip pics, or screenshots of places you want to go. Photos stay on this phone.</div>
+      <div class="tripPhotos">${tripDraft.photos.map(id => `<div class="tp"><img data-photo="${id}" alt=""><button data-del="${id}" aria-label="Remove photo">✕</button></div>`).join("")}
+        <button class="tpAdd" id="tpAdd">＋<br><span class="small">Add photos</span></button></div>
+      <input type="file" id="tpFile" accept="image/*" multiple style="display:none">`;
+    loadThumbs();
+    $("tpAdd").onclick = () => $("tpFile").click();
+    $("tpFile").onchange = async e => {
+      const files = [...e.target.files]; e.target.value = ""; if (!files.length) return;
+      toast(`Adding ${files.length} photo${files.length > 1 ? "s" : ""}…`);
+      for (const [i, f] of files.entries()){
+        try { const b = await shrink(f), id = `trip_${tripDraft.id}_${Date.now()}_${i}`; await PDB.put(id, b); tripDraft.photos.push(id); tripNewPhotos.push(id); }
+        catch(err){ toast("Couldn't add one of the photos"); }
+      }
+      renderTripModal();
+    };
+    el.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { const id = b.dataset.del; tripDraft.photos = tripDraft.photos.filter(x => x !== id); tripDropPhotos.push(id); renderTripModal(); });
+    el.querySelectorAll(".tp img").forEach(img => img.onclick = () => { if (img.src){ $("photoView").innerHTML = `<img src="${img.src}" alt="">`; $("photoView").classList.add("open"); } });
+  }
+}
+function tripSummary(t){
+  const it = t.items || {stay: [], eat: [], do: []}, bits = [];
+  if (it.stay.length) bits.push(`🏨 ${it.stay.length}${it.stay.some(i => i.done) ? " (booked ✅)" : ""}`);
+  if (it.eat.length) bits.push(`🍽️ ${it.eat.length}`);
+  if (it.do.length) bits.push(`✨ ${it.do.length}`);
+  if (t.photos && t.photos.length) bits.push(`📷 ${t.photos.length}`);
+  if (t.pack && t.pack.some(p => p.done)) bits.push(`🎒 ${t.pack.filter(p => p.done).length}/${t.pack.length}`);
+  return bits.length ? `<div class="mute small" style="margin-top:4px">${bits.join(" · ")}</div>` : "";
+}
+$("tCancel").onclick = async () => {
+  for (const id of tripNewPhotos) await PDB.del(id);   // undo photos added in this session
+  tripNewPhotos = []; $("tripModal").classList.remove("open");
+};
+$("tSave").onclick = async () => {
+  syncDetails();
+  if (!tripDraft.start) return toast("Pick a start date"); if (tripDraft.end < tripDraft.start) return toast("End date is before the start");
+  for (const id of tripDropPhotos) await PDB.del(id);
+  tripNewPhotos = []; tripDropPhotos = [];
+  const i = state.trips.findIndex(t => t.id === tripDraft.id);
+  if (i >= 0) state.trips[i] = tripDraft; else state.trips.push(tripDraft);
   save(); render(); $("tripModal").classList.remove("open"); toast("Trip saved ✈️");
 };
-$("tDelete").onclick = () => confirmBox("Delete this trip? Logged ski days stay.", () => { state.trips = state.trips.filter(t => t !== editingTrip); save(); render(); $("tripModal").classList.remove("open"); });
+$("tDelete").onclick = () => confirmBox("Delete this trip and its photos? Logged ski days stay.", async () => {
+  for (const id of (editingTrip.photos || []).concat(tripNewPhotos)) await PDB.del(id);
+  state.trips = state.trips.filter(t => t.id !== editingTrip.id); save(); render(); $("tripModal").classList.remove("open"); });
+$("photoView").onclick = () => $("photoView").classList.remove("open");
 
 // ---------- Achievements ----------
 const BADGES = [
