@@ -314,7 +314,7 @@ a{color:var(--accent2)}
   </div>
   </div>
   <p class="mute small" style="margin-top:16px">Snow &amp; weather: modelled data from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> at each hill's mid-mountain elevation. Use the hill's own report for official numbers.</p>
-  <p class="mute small" style="text-align:center;margin-top:4px">Ski Days · version 2026-11-20g (crash log)</p>
+  <p class="mute small" style="text-align:center;margin-top:4px">Ski Days · version 2026-11-20h (trail maps)</p>
 </div>
 
 <!-- Edit / add day -->
@@ -611,7 +611,7 @@ function renderToday(){
     el.innerHTML = `<div class="signTag"><span class="sym green"></span>Today · ticket punched</div>
       <div class="hill display">${esc(h.name)}${pow?'<span class="powBadge">POW DAY</span>':""}</div>
       ${condPills(day.cond)}
-      <p class="small row" style="margin:10px 0 0;justify-content:flex-start;gap:16px">${camLink(h)}${h.url?`<a href="${h.url}" target="_blank" rel="noopener" style="flex:0 0 auto">Official hill report ↗</a>`:""}</p>`;
+      <p class="small row" style="margin:10px 0 0;justify-content:flex-start;gap:16px">${camLink(h)}${trailLink(h)}${h.url?`<a href="${h.url}" target="_blank" rel="noopener" style="flex:0 0 auto">Official hill report ↗</a>`:""}</p>`;
   } else {
     el.innerHTML = `<div class="signTag"><span class="sym green"></span>Today</div>
       <div class="hill display">Lifts are spinning</div>
@@ -944,7 +944,7 @@ function renderReport(){
         </div>
         ${r.week && r.week.length?`<div class="week">${r.week.map((w,k) => `<div><b>${w.s>=1?Math.round(w.s):""}</b><i style="height:${Math.max(2, w.s/wkMax*44)}px"></i><span>${k===0?"Today":parseYmd(w.date).toLocaleDateString("en-CA",{weekday:"short"})}</span></div>`).join("")}</div>`:""}
         <div class="row small" style="margin-top:10px;gap:12px">
-          ${camLink(h)}
+          ${camLink(h)}${trailLink(h)}
           ${h.url?`<a href="${h.url}" target="_blank" rel="noopener" style="flex:0 0 auto">Official report ↗</a>`:""}
           <span></span>
           <button class="logHere" data-id="${r.id}" style="flex:0 0 auto;padding:6px 10px">🎟️ Ski here today</button>
@@ -967,6 +967,14 @@ const CAMS = {
   kickinghorse: "https://snowstash.com/canada/british-columbia/kicking-horse/snow-cams",
   revelstoke: "https://www.revelstokemountainresort.com/mountain/conditions/webcams/"
 };
+const TRAILMAPS = {
+  louise: "https://www.onthesnow.com/alberta/lake-louise/trailmap",
+  sunshine: "https://www.skibanff.com/explore/trail-maps/",
+  norquay: "https://banffnorquay.com/trail-map/",
+  nakiska: "https://www.onthesnow.com/alberta/nakiska-ski-area/trailmap"
+};
+const trailURL = h => TRAILMAPS[h.id] || `https://www.google.com/search?q=${encodeURIComponent(h.name + " ski resort trail map")}`;
+const trailLink = (h, style = "") => `<a href="${trailURL(h)}" target="_blank" rel="noopener" style="flex:0 0 auto;${style}">🗺️ Trail map ↗</a>`;
 const camURL = h => CAMS[h.id] || `https://www.google.com/search?q=${encodeURIComponent(h.name + " ski resort webcam")}`;
 const camLink = (h, style = "") => `<a href="${camURL(h)}" target="_blank" rel="noopener" style="flex:0 0 auto;${style}">📷 Webcams ↗</a>`;
 
@@ -1004,7 +1012,7 @@ function renderHome(){
     ${powOutlook(r)}
     ${avyHTML(h)}
     <div class="row small" style="margin-top:10px">
-      ${camLink(h)}
+      ${camLink(h)}${trailLink(h)}
       ${h.url ? `<a href="${h.url}" target="_blank" rel="noopener" style="flex:0 0 auto">Official report ↗</a>` : "<span></span>"}
     </div>
     <div class="row small" style="margin-top:8px;justify-content:flex-start;gap:14px;flex-wrap:wrap">
