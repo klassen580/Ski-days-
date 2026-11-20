@@ -272,6 +272,7 @@ a{color:var(--accent2)}
   <div id="viewSeason">
   <div id="alertBox"></div>
   <div id="homeCard"></div>
+  <div id="nearCard"></div>
   <div id="todayCard" class="card today"></div>
   <div id="goalCard"></div>
   <div id="tripsCard"></div>
@@ -322,7 +323,8 @@ a{color:var(--accent2)}
 <div class="modal" id="setModal"><div class="sheet">
   <h2 class="display">Settings</h2>
   <label>Home hill (default for new days)</label><select id="sHome"></select>
-  <label>Home town (for drive times)</label><select id="sTown"></select>
+  <label><input type="checkbox" id="sLoc" style="width:auto"> 📍 Use my phone's location for nearby hills, drive times and pow alerts</label>
+  <label>Home town (used when location is off)</label><select id="sTown"></select>
   <h2 class="display">This season</h2>
   <label>Season goal (days)</label><input type="number" id="sGoal" min="1" placeholder="50">
   <div class="row">
@@ -627,7 +629,7 @@ function render(){
         ${d.photo?`<img class="thumb" data-photo="${d.id}" alt="">`:""}</div></div>`;
   }).join("") + tallyCards : `<div class="empty"><span class="display">No turns logged yet</span>Your ${currentSeason} lift tickets will show up here.</div>`;
   document.querySelectorAll(".day").forEach(el => el.onclick = () => openDay(state.days.find(d => d.id === el.dataset.id)));
-  loadThumbs(); renderHome(); renderGoal(); renderTrips(); renderAlerts(); renderStatsView(); renderGear(); checkBadges();
+  loadThumbs(); renderHome(); renderNear(); renderGoal(); renderTrips(); renderAlerts(); renderStatsView(); renderGear(); checkBadges();
 }
 
 // ---------- Day modal ----------
@@ -785,6 +787,7 @@ $("pastBtn").onclick = openPast;
 // ---------- Settings ----------
 function openSettings(){
   $("sHome").innerHTML = hillOptions(homeHill());
+  $("sLoc").checked = !!state.settings.useLoc;
   $("sTown").innerHTML = TOWNS.map(t => `<option value="${t.id}" ${t.id===state.settings.town?"selected":""}>${t.name}</option>`).join("");
   const cur = seasonOf(todayStr());
   $("sSiri").value = location.href.split(/[?#]/)[0] + "?log=home";
@@ -796,6 +799,8 @@ $("sSiriCopy").onclick = async () => { try { await navigator.clipboard.writeText
 $("sClose").onclick = () => {
   const cur = seasonOf(todayStr());
   state.settings.home = $("sHome").value; state.settings.town = $("sTown").value;
+  const wantLoc = $("sLoc").checked, turnedOn = wantLoc && !state.settings.useLoc; state.settings.useLoc = wantLoc;
+  if (turnedOn) setTimeout(() => locate(true), 300);
   const g = parseInt($("sGoal").value, 10); if (g > 0) state.goals[cur] = g; else delete state.goals[cur];
   const pp = parseFloat($("sPass").value); if (pp > 0) state.passes[cur] = pp; else delete state.passes[cur];
   const tk = parseFloat($("sTicket").value); state.settings.ticket = tk > 0 ? tk : 0;
@@ -864,14 +869,14 @@ async function loadReport(force){
   } catch(e){
     if (force || !report) toast("Couldn't reach the snow report. Check your connection.");
   }
-  renderReport(); renderToday(); renderAlerts(); renderHome();
+  renderReport(); renderToday(); renderAlerts(); renderHome(); renderNear();
 }
 function renderReport(){
   if (!report || !report.data){ $("repStatus").textContent = "No report yet. Tap refresh."; $("powBanner").innerHTML = ""; $("repList").innerHTML = ""; return; }
   const at = new Date(report.at);
   $("repStatus").textContent = `Updated ${at.toLocaleString("en-CA",{weekday:"short", hour:"numeric", minute:"2-digit"})}`;
   const all = report.data.filter(r => BUILTIN_HILLS.some(h => h.id === r.id)).sort((a,b) => (b.snow24 - a.snow24) || (b.snow48 - a.snow48));
-  const rows = all.filter(r => regionOf(hillById(r.id)) === "rockies");
+  const rows = all.filter(r => isLocal(hillById(r.id)));
   const pow = rows.filter(r => powLevel(r) === "POW DAY");
   const incoming = rows.filter(r => r.next24 >= 10).sort((a,b) => b.next24 - a.next24);
   const best = rows[0];
@@ -1315,9 +1320,58 @@ const TOWNS = [
   {id:"lethbridge", name:"Lethbridge", lat:49.6956, lon:-112.8451}, {id:"medhat", name:"Medicine Hat", lat:50.0405, lon:-110.6766},
   {id:"gp", name:"Grande Prairie", lat:55.1707, lon:-118.7947}, {id:"hinton", name:"Hinton", lat:53.4049, lon:-117.5850}
 ];
-const town = () => TOWNS.find(t => t.id === state.settings.town) || TOWNS[0];
+let myPos = null; try { myPos = JSON.parse(localStorage.getItem("skidays.pos")); } catch(e){}
+const usingLoc = () => !!(state.settings.useLoc && myPos);
+const town = () => usingLoc() ? {id:"here", name:"your location", lat: myPos.lat, lon: myPos.lon} : (TOWNS.find(t => t.id === state.settings.town) || TOWNS[0]);
+// Hills that count as "local": within ~10 h drive of you (or of your home town); falls back to Alberta & BC
+function isLocal(h){
+  if (usingLoc()){ const near = hills().filter(x => x.lat && driveHours(x) <= 10); return near.length >= 3 ? driveHours(h) <= 10 : nearestHills(6).some(x => x.id === h.id); }
+  return regionOf(h) === "rockies";
+}
+const nearestHills = n => hills().filter(h => h.lat).map(h => ({h, d: km(town(), h)})).sort((a,b) => a.d - b.d).slice(0, n).map(x => x.h);
+let locBusy = false, locFailed = false;
+function locate(manual){
+  if (!navigator.geolocation){ if (manual) toast("This browser can't share location"); return; }
+  if (locBusy) return; locBusy = true;
+  navigator.geolocation.getCurrentPosition(p => {
+    locBusy = false; locFailed = false;
+    myPos = {lat: +p.coords.latitude.toFixed(3), lon: +p.coords.longitude.toFixed(3), at: Date.now()};   // ~100 m, plenty for drive times
+    try { localStorage.setItem("skidays.pos", JSON.stringify(myPos)); } catch(e){}
+    render(); renderReport(); if (manual) toast("📍 Found you. Showing nearby hills.");
+  }, err => {
+    locBusy = false; locFailed = true;
+    if (manual || !myPos) toast(err.code === 1
+      ? "Location is blocked. On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using."
+      : "Couldn't get your location right now");
+    renderNear();
+  }, {enableHighAccuracy: false, timeout: 12000, maximumAge: 30 * 60 * 1000});
+}
+function renderNear(){
+  const el = $("nearCard"); if (!el) return;
+  if (!state.settings.useLoc){
+    el.innerHTML = `<button id="nearOn" style="width:100%;margin-bottom:10px">📍 Use my location to show hills near me</button>`;
+    $("nearOn").onclick = () => { state.settings.useLoc = true; save(); renderNear(); locate(true); };
+    return;
+  }
+  if (!myPos){
+    el.innerHTML = `<div class="card"><div class="signTag">📍 Hills near you</div><div class="mute small" style="margin-top:6px">${locFailed
+      ? `Couldn't get your location, so drive times use ${esc((TOWNS.find(t => t.id === state.settings.town) || TOWNS[0]).name)}. If you blocked it, allow location for this site in your phone's settings.`
+      : "Finding you…"}</div>${locFailed ? `<button id="nearRetry" style="margin-top:8px;padding:6px 10px" class="small">📍 Try again</button>` : ""}</div>`;
+    if ($("nearRetry")) $("nearRetry").onclick = () => locate(true);
+    return;
+  }
+  const list = nearestHills(5);
+  el.innerHTML = `<div class="card"><div class="row"><div class="signTag">📍 Hills near you</div><button id="nearRefresh" class="small" style="flex:0 0 auto;padding:6px 10px">↻</button></div>
+    ${list.map(h => { const r = reportFor(h.id), hrs = driveHours(h), lvl = powLevel(r);
+      return `<div class="whereRow"><div style="flex:1;min-width:0"><b class="display" style="font-size:21px">${esc(h.name)}</b>${lvl ? ` <span class="powBadge ${lvl === "POW DAY" ? "" : "soft"}" style="font-size:12px">${lvl.toUpperCase()}</span>` : ""}
+        <div class="mute small">${hrs < 0.25 ? "You're here!" : `~${fmtDrive(hrs)} drive`}${r ? ` · ❄️ ${r.snow24} cm 24h · ${r.snow48} cm 48h · ${Math.round(r.temp)}°C` : ""}</div></div>
+        <button class="nearLog" data-id="${h.id}" style="flex:0 0 auto;padding:6px 9px;font-size:13px">🎟️</button></div>`; }).join("")}
+    <div class="mute small" style="margin-top:6px">Location checked at ${new Date(myPos.at).toLocaleTimeString("en-CA", {hour:"numeric", minute:"2-digit"})} · it never leaves your phone</div></div>`;
+  $("nearRefresh").onclick = () => locate(true);
+  el.querySelectorAll(".nearLog").forEach(b => b.onclick = () => checkIn(b.dataset.id));
+}
 function driveHours(h){ return km(town(), h) * 1.3 / 85; }   // rough: road factor 1.3, 85 km/h average
-const fmtDrive = hrs => hrs < 1 ? `${Math.max(5, Math.round(hrs*60/5)*5)} min` : `${Math.floor(hrs)}h ${String(Math.round((hrs%1)*60/5)*5).padStart(2,"0")}m`;
+const fmtDrive = hrs => { const m = Math.max(5, Math.round(hrs*60/5)*5); return m < 60 ? `${m} min` : `${Math.floor(m/60)}h ${String(m%60).padStart(2,"0")}m`; };
 const money = n => "$" + (Math.round(n*100)/100).toLocaleString("en-CA", {minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2});
 const seasonDays = season => state.days.filter(d => seasonOf(d.date) === season);
 const seasonTallies = season => state.tallies.filter(t => t.season === season);
@@ -1412,7 +1466,7 @@ function renderAlerts(){
   const el = $("alertBox"); if (!el) return;
   if (!report || !report.data){ el.innerHTML = ""; return; }
   const home = report.data.find(r => r.id === homeHill());
-  const local = report.data.filter(r => regionOf(hillById(r.id)) === "rockies");
+  const local = report.data.filter(r => isLocal(hillById(r.id)));
   const powNow = local.filter(r => powLevel(r) === "POW DAY").sort((a,b) => b.snow24 - a.snow24);
   const soon = local.filter(r => r.next24 >= 10).sort((a,b) => b.next24 - a.next24);
   let title = "", sub = "";
@@ -1845,6 +1899,7 @@ document.querySelectorAll(".modal").forEach(m => m.addEventListener("click", e =
 render();
 loadReport(false);
 loadAvy(false);
+if (state.settings.useLoc) locate(false);
 (async () => {
   const q = new URLSearchParams(location.search).get("log");
   if (q){
