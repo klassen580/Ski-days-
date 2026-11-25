@@ -1357,7 +1357,7 @@ const camLink = (h, style = "") => `<a href="${camURL(h)}" target="_blank" rel="
 let official = null; try { official = JSON.parse(localStorage.getItem("skidays.official")); } catch(e){}
 function officialFor(id){
   const o = official && official.hills && official.hills[id];
-  if (!o || !o.updated || o.closed) return null;
+  if (!o || !o.updated) return null;
   const age = (parseYmd(todayStr()) - parseYmd(o.updated)) / 864e5;
   return age <= 1 ? o : null;   // today's or yesterday's report only
 }
@@ -1394,7 +1394,7 @@ async function loadOfficial(){
 }
 function sourceLine(r){
   const o = r && r.official;
-  if (o) return `<div class="srcLine ok">✅ Official hill report · ${fmtDate(o.updated)}${o.lifts_total ? ` · ${o.lifts_open}/${o.lifts_total} lifts open` : ""}${o.summit_cm != null ? ` · summit ${o.summit_cm} cm` : ""}</div>`;
+  if (o) return `<div class="srcLine ok">✅ Official hill report · ${fmtDate(o.updated)}${o.closed ? " · not open yet" : o.lifts_total ? ` · ${o.lifts_open}/${o.lifts_total} lifts open` : ""}${o.summit_cm != null ? ` · summit ${o.summit_cm} cm` : ""}</div>`;
   return `<div class="srcLine">📡 Forecast model estimate${regionOf(hillById(r.id)) === "rockies" ? " · no hill report today" : ""}</div>`;
 }
 
