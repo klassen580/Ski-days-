@@ -2,16 +2,12 @@
  "errors": {
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-25T08:10-07:00",
+ "generated": "2026-11-25T09:19-07:00",
  "hills": {
   "bigwhite": {
-   "base_cm": 8,
+   "base_cm": 10,
    "closed": true,
    "days": [
-    {
-     "cm": 0,
-     "label": "Fri"
-    },
     {
      "cm": 0,
      "label": "Sat"
@@ -27,29 +23,55 @@
     {
      "cm": 3,
      "label": "Tue"
+    },
+    {
+     "cm": 5,
+     "label": "Today"
     }
    ],
-   "latest_label": "Tue",
+   "latest_label": "Today",
    "lifts_open": 0,
    "lifts_total": 16,
-   "new24_cm": 3,
-   "new48_cm": 5,
-   "recent_total_cm": 5,
-   "updated": "2026-11-24",
+   "new24_cm": 5,
+   "new48_cm": 8,
+   "recent_total_cm": 10,
+   "updated": "2026-11-25",
    "url": "https://www.onthesnow.com/british-columbia/big-white/skireport"
   },
   "castle": {
    "closed": true,
-   "updated": "2026-11-23",
+   "days": [
+    {
+     "cm": 0,
+     "label": "Sat"
+    },
+    {
+     "cm": 0,
+     "label": "Sun"
+    },
+    {
+     "cm": 0,
+     "label": "Mon"
+    },
+    {
+     "cm": 0,
+     "label": "Tue"
+    },
+    {
+     "cm": 0,
+     "label": "Today"
+    }
+   ],
+   "latest_label": "Today",
+   "new24_cm": 0,
+   "new48_cm": 0,
+   "recent_total_cm": 0,
+   "updated": "2026-11-25",
    "url": "https://www.onthesnow.com/alberta/castle-mountain/skireport"
   },
   "fernie": {
    "closed": true,
    "days": [
-    {
-     "cm": 2,
-     "label": "Fri"
-    },
     {
      "cm": 0,
      "label": "Sat"
@@ -65,13 +87,17 @@
     {
      "cm": 0,
      "label": "Tue"
+    },
+    {
+     "cm": 2,
+     "label": "Today"
     }
    ],
-   "latest_label": "Tue",
-   "new24_cm": 0,
-   "new48_cm": 8,
+   "latest_label": "Today",
+   "new24_cm": 2,
+   "new48_cm": 2,
    "recent_total_cm": 13,
-   "updated": "2026-11-24",
+   "updated": "2026-11-25",
    "url": "https://www.onthesnow.com/british-columbia/fernie-alpine/skireport"
   },
   "kickinghorse": {
@@ -112,10 +138,6 @@
    "closed": true,
    "days": [
     {
-     "cm": 3,
-     "label": "Fri"
-    },
-    {
      "cm": 0,
      "label": "Sat"
     },
@@ -130,13 +152,17 @@
     {
      "cm": 0,
      "label": "Tue"
+    },
+    {
+     "cm": 0,
+     "label": "Today"
     }
    ],
-   "latest_label": "Tue",
+   "latest_label": "Today",
    "new24_cm": 0,
-   "new48_cm": 3,
-   "recent_total_cm": 5,
-   "updated": "2026-11-24",
+   "new48_cm": 0,
+   "recent_total_cm": 3,
+   "updated": "2026-11-25",
    "url": "https://www.onthesnow.com/british-columbia/kimberley/skireport"
   },
   "louise": {
@@ -181,10 +207,6 @@
    "closed": false,
    "days": [
     {
-     "cm": 3,
-     "label": "Fri"
-    },
-    {
      "cm": 1,
      "label": "Sat"
     },
@@ -199,18 +221,22 @@
     {
      "cm": 0,
      "label": "Tue"
+    },
+    {
+     "cm": 0,
+     "label": "Today"
     }
    ],
-   "latest_label": "Tue",
+   "latest_label": "Today",
    "lifts_open": 3,
    "lifts_total": 7,
    "mid_cm": 20,
    "new24_cm": 0,
    "new48_cm": 0,
-   "recent_total_cm": 5,
+   "recent_total_cm": 1,
    "runs_open": 2,
    "runs_total": 91,
-   "updated": "2026-11-24",
+   "updated": "2026-11-25",
    "url": "https://www.onthesnow.com/alberta/marmot-basin/skireport"
   },
   "nakiska": {
@@ -255,10 +281,6 @@
    "days": [
     {
      "cm": 0,
-     "label": "Fri"
-    },
-    {
-     "cm": 0,
      "label": "Sat"
     },
     {
@@ -272,9 +294,13 @@
     {
      "cm": 0,
      "label": "Tue"
+    },
+    {
+     "cm": 0,
+     "label": "Today"
     }
    ],
-   "latest_label": "Tue",
+   "latest_label": "Today",
    "lifts_open": 2,
    "lifts_total": 7,
    "new24_cm": 0,
@@ -283,16 +309,12 @@
    "runs_open": 3,
    "runs_total": 60,
    "summit_cm": 36,
-   "updated": "2026-11-24",
+   "updated": "2026-11-25",
    "url": "https://www.onthesnow.com/alberta/ski-banff-norquay/skireport"
   },
   "panorama": {
    "closed": true,
    "days": [
-    {
-     "cm": 0,
-     "label": "Fri"
-    },
     {
      "cm": 0,
      "label": "Sat"
@@ -308,22 +330,22 @@
     {
      "cm": 0,
      "label": "Tue"
+    },
+    {
+     "cm": 0,
+     "label": "Today"
     }
    ],
-   "latest_label": "Tue",
+   "latest_label": "Today",
    "new24_cm": 0,
    "new48_cm": 0,
    "recent_total_cm": 0,
-   "updated": "2026-11-24",
+   "updated": "2026-11-25",
    "url": "https://www.onthesnow.com/british-columbia/panorama-mountain-village/skireport"
   },
   "revelstoke": {
    "closed": true,
    "days": [
-    {
-     "cm": 5,
-     "label": "Fri"
-    },
     {
      "cm": 1,
      "label": "Sat"
@@ -339,23 +361,23 @@
     {
      "cm": 1,
      "label": "Tue"
+    },
+    {
+     "cm": 28,
+     "label": "Today"
     }
    ],
-   "latest_label": "Tue",
-   "new24_cm": 1,
-   "new48_cm": 16,
-   "recent_total_cm": 23,
-   "updated": "2026-11-24",
+   "latest_label": "Today",
+   "new24_cm": 28,
+   "new48_cm": 29,
+   "recent_total_cm": 43,
+   "updated": "2026-11-25",
    "url": "https://www.onthesnow.com/british-columbia/revelstoke-mountain/skireport"
   },
   "sunpeaks": {
-   "base_cm": 28,
+   "base_cm": 33,
    "closed": true,
    "days": [
-    {
-     "cm": 0,
-     "label": "Fri"
-    },
     {
      "cm": 0,
      "label": "Sat"
@@ -371,15 +393,19 @@
     {
      "cm": 0,
      "label": "Tue"
+    },
+    {
+     "cm": 8,
+     "label": "Today"
     }
    ],
-   "latest_label": "Tue",
+   "latest_label": "Today",
    "lifts_open": 0,
    "lifts_total": 13,
-   "new24_cm": 0,
-   "new48_cm": 0,
-   "recent_total_cm": 0,
-   "updated": "2026-11-24",
+   "new24_cm": 8,
+   "new48_cm": 8,
+   "recent_total_cm": 8,
+   "updated": "2026-11-25",
    "url": "https://www.onthesnow.com/british-columbia/sun-peaks/skireport"
   },
   "sunshine": {
@@ -388,10 +414,6 @@
    "days": [
     {
      "cm": 1,
-     "label": "Fri"
-    },
-    {
-     "cm": 1,
      "label": "Sat"
     },
     {
@@ -405,15 +427,19 @@
     {
      "cm": 0,
      "label": "Tue"
+    },
+    {
+     "cm": 0,
+     "label": "Today"
     }
    ],
-   "latest_label": "Tue",
+   "latest_label": "Today",
    "lifts_open": 3,
    "lifts_total": 12,
    "mid_cm": 30,
    "new24_cm": 0,
    "new48_cm": 0,
-   "recent_total_cm": 2,
+   "recent_total_cm": 1,
    "runs_open": 8,
    "runs_total": 140,
    "summit_cm": 38,
