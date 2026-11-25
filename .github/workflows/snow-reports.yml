@@ -1,0 +1,36 @@
+name: Snow reports
+
+on:
+  schedule:
+    - cron: "17 * * * *"      # every hour
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/scrape_snow.py"
+      - ".github/workflows/snow-reports.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snow-reports
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read hill snow reports
+        run: python3 scripts/scrape_snow.py snow-report.json
+      - name: Save if changed
+        run: |
+          git config user.name "snow-report-bot"
+          git config user.email "snow-report-bot@users.noreply.github.com"
+          git add snow-report.json
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Update hill snow reports"
+          git pull --rebase origin main
+          git push origin main

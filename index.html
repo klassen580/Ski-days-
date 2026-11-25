@@ -249,6 +249,9 @@ a.chip{text-decoration:none;color:var(--ink);background:var(--bg2);border:1px so
 .verItem summary::before{content:"▸ ";color:var(--mute)}
 .verItem[open] summary::before{content:"▾ "}
 .verItem ul{margin:6px 0 0 18px;padding:0;font-size:13px;color:var(--mute)}
+.srcLine{font-size:12px;color:var(--mute);margin-top:8px}
+.srcLine.ok{color:#8fe3b0}
+.srcPill.ok{border-color:#2fbf71;color:#8fe3b0}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
 .stakeCard{display:flex;gap:6px;align-items:center;padding:12px 14px 6px 4px}
 .stake{flex:0 0 auto}
@@ -418,7 +421,7 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
     <button id="settingsBtn">⚙️ Settings</button>
   </div>
   </div>
-  <p class="mute small" style="margin-top:16px">Snow &amp; weather: modelled data from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> at each hill's mid-mountain elevation. Use the hill's own report for official numbers.</p>
+  <p class="mute small" style="margin-top:16px">Snow numbers: ✅ official hill reports (resort-reported, via <a href="https://www.onthesnow.com/" target="_blank" rel="noopener">OnTheSnow</a>, checked hourly) where available; otherwise 📡 forecast estimates from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>.</p>
   <p class="mute small" style="text-align:center;margin-top:4px"><a href="#" id="verLink" style="color:inherit">Ski Days · version <span id="verNum"></span></a></p>
 </div>
 
@@ -692,7 +695,7 @@ async function fetchConditions(hill, date){
 }
 async function refreshDay(day, quiet){
   try {
-    day.cond = await fetchConditions(hillById(day.hill), day.date);
+    day.cond = await fetchConditions(hillById(day.hill), day.date); overlayOfficialDay(day);
     save(); render();
     if (!quiet) toast("Snow data updated");
   } catch(e){ if (!quiet) toast("Snow data unavailable: " + e.message); }
@@ -702,7 +705,7 @@ async function refreshDays(list){
   if (!list || !list.length) return;
   let i = 0, changed = 0;
   const worker = async () => { while (i < list.length){ const d = list[i++];
-    try { d.cond = await fetchConditions(hillById(d.hill), d.date); changed++; } catch(e){} } };
+    try { d.cond = await fetchConditions(hillById(d.hill), d.date); overlayOfficialDay(d); changed++; } catch(e){} } };
   await Promise.all(Array.from({length: Math.min(3, list.length)}, worker));
   if (changed){ save(); render(); }
 }
@@ -1256,9 +1259,11 @@ async function loadReport(force){
   const fresh = report && report.at && (Date.now() - report.at < 30*60*1000);
   if (fresh && !force){ renderReport(); return; }
   $("repStatus").textContent = "Checking the hills…";
+  loadOfficial();
   reportLoading = true; renderHome();
   try {
     report = {at: Date.now(), data: await fetchReport()};
+    applyOfficial();
     reportFailed = false;
     try { localStorage.setItem(RKEY, JSON.stringify(report)); } catch(e){}
     if (force) toast("Snow report updated");
@@ -1301,6 +1306,7 @@ function renderReport(){
       <div style="flex:1;min-width:0">
         <div class="display" style="font-size:24px;line-height:1">${esc(h.name)}${h.region !== "rockies" && h.area ? ` <span class="mute small">${esc(h.area)}</span>` : ""}${home?' <span class="mute small">🏠</span>':""}${lvl?`<span class="powBadge ${lvl==="POW DAY"?"":"soft"}">${lvl.toUpperCase()}</span>`:""}</div>
         <div class="cond">
+          <span class="pill srcPill ${r.official ? "ok" : ""}">${r.official ? "✅ Hill report" : "📡 Model"}</span>
           <span class="pill ${r.snow24>=10?"pow":""}">❄️ ${r.snow24} cm 24h</span>
           <span class="pill ${r.snow48>=20?"pow":""}">${r.snow48} cm 48h</span>
           <span class="pill">Next 24h: ${r.next24} cm</span>
@@ -1346,6 +1352,52 @@ const trailLink = (h, style = "") => `<a href="${trailURL(h)}" target="_blank" r
 const camURL = h => CAMS[h.id] || `https://www.google.com/search?q=${encodeURIComponent(h.name + " ski resort webcam")}`;
 const camLink = (h, style = "") => `<a href="${camURL(h)}" target="_blank" rel="noopener" style="flex:0 0 auto;${style}">📷 Webcams ↗</a>`;
 
+
+// ---------- Official hill reports (snow-report.json, updated hourly by GitHub) ----------
+let official = null; try { official = JSON.parse(localStorage.getItem("skidays.official")); } catch(e){}
+function officialFor(id){
+  const o = official && official.hills && official.hills[id];
+  if (!o || !o.updated || o.closed) return null;
+  const age = (parseYmd(todayStr()) - parseYmd(o.updated)) / 864e5;
+  return age <= 1 ? o : null;   // today's or yesterday's report only
+}
+function applyOfficial(){
+  if (!report || !report.data) return;
+  report.data.forEach(r => {
+    if (r.m24 === undefined){ r.m24 = r.snow24; r.m48 = r.snow48; r.mDepth = r.depth; r.mOver = r.overnight; }
+    const o = officialFor(r.id);
+    if (o){
+      if (o.new24_cm != null){ r.snow24 = o.new24_cm; r.overnight = o.new24_cm; } else { r.snow24 = r.m24; r.overnight = r.mOver; }
+      r.snow48 = o.new48_cm != null ? o.new48_cm : r.m48;
+      const base = o.base_cm != null ? o.base_cm : o.mid_cm; r.depth = base != null ? base : r.mDepth;
+      r.official = o;
+    } else { r.snow24 = r.m24; r.snow48 = r.m48; r.depth = r.mDepth; r.overnight = r.mOver; r.official = null; }
+  });
+}
+function overlayOfficialDay(d){
+  const o = d && d.cond && d.date === todayStr() && officialFor(d.hill);
+  if (!o) return;
+  if (o.new24_cm != null) d.cond.snow24 = o.new24_cm;
+  if (o.new48_cm != null) d.cond.snow48 = o.new48_cm;
+  const base = o.base_cm != null ? o.base_cm : o.mid_cm; if (base != null) d.cond.depth = base;
+  d.cond.official = true;
+}
+async function loadOfficial(){
+  try {
+    const r = await fetch(`snow-report.json?t=${Date.now()}`, {cache: "no-store"});
+    if (!r.ok) throw new Error(r.status);
+    official = await r.json();
+    try { localStorage.setItem("skidays.official", JSON.stringify(official)); } catch(e){}
+  } catch(e){ /* not published yet or offline: keep the last copy */ }
+  applyOfficial();
+  if (report && report.data){ renderReport(); renderToday(); renderAlerts(); renderHome(); renderNear(); }
+}
+function sourceLine(r){
+  const o = r && r.official;
+  if (o) return `<div class="srcLine ok">✅ Official hill report · ${fmtDate(o.updated)}${o.lifts_total ? ` · ${o.lifts_open}/${o.lifts_total} lifts open` : ""}${o.summit_cm != null ? ` · summit ${o.summit_cm} cm` : ""}</div>`;
+  return `<div class="srcLine">📡 Forecast model estimate${regionOf(hillById(r.id)) === "rockies" ? " · no hill report today" : ""}</div>`;
+}
+
 // ---------- Home hill daily snow report ----------
 function weekBars(list, max, past){
   return `<div class="week ${past ? "past" : ""}">${list.map((w, k) => {
@@ -1376,12 +1428,13 @@ function renderHome(){
       <button id="homeChange" style="flex:0 0 auto;padding:6px 10px" class="small">Change</button></div>
     ${stale ? `<div class="small" style="color:var(--warn);margin-top:6px">⚠️ ${reportLoading ? "Refreshing… showing" : canRetry ? "Couldn't refresh. Showing" : "Showing"} data from ${new Date(report.at).toLocaleString("en-CA", {weekday:"short", hour:"numeric", minute:"2-digit"})}. Pow alerts are paused until it updates.</div>${retryBtn}` : ""}
     <div class="homeStats">
-      ${tile(r.overnight != null ? Math.round(r.overnight) : null, "Overnight cm", r.overnight >= 5)}
+      ${tile(r.overnight != null ? Math.round(r.overnight) : null, r.official ? "New snow cm" : "Overnight cm", r.overnight >= 5)}
       ${tile(Math.round(r.snow24), "24h cm", r.snow24 >= 10)}
       ${tile(Math.round(r.snow48), "48h cm", r.snow48 >= 20)}
     </div>
+    ${sourceLine(r)}
     <div class="cond">
-      ${r.depth != null ? `<span class="pill">Base ~${r.depth} cm</span>` : ""}
+      ${r.depth != null ? `<span class="pill">Base ${r.official ? "" : "~"}${r.depth} cm</span>` : ""}
       <span class="pill">${Math.round(r.temp)}°C</span><span class="pill">💨 ${Math.round(r.wind)} km/h</span><span class="pill">${esc(r.wx)}</span>
       <span class="pill ${r.next24 >= 10 ? "pow" : ""}">Next 24h: ${r.next24} cm</span>
     </div>
@@ -2994,8 +3047,9 @@ function renderHomeHelp(){
 }
 
 // ---------- Version tracker ----------
-const APP_VERSION = "2026-11-24b";
+const APP_VERSION = "2026-11-25a";
 const CHANGELOG = [
+  ["2026-11-25a", "Official hill snow reports", ["Alberta & BC hills now show the resort's own reported new snow, base depth and lifts open, checked every hour", "Numbers are labelled ✅ Hill report or 📡 Model so you know which you're seeing", "Forecasts (next 24h, 7-day) still come from the weather model"]],
   ["2026-11-24b", "Lift Ticket Night design polish", ["Calmer colours so pow days stand out most", "Larger, easier-to-read text and more spacing", "Line icons on the tabs and subtle animations on new tickets", "Photo backgrounds on empty screens"]],
   ["2026-11-24a", "Version tracker + iPhone/Android help", ["What's new list in Settings, and a one-time note after each update", "Help text adapts to iPhone or Android (home screen, Siri, location settings)", "Built on Echelon's reliability update"]],
   ["2026-11-22b", "Echelon reliability update", ["Fixed the Pack \"+ Add\" and Past days \"Add days\" buttons clashing", "Saves are only confirmed when they actually succeed", "Backups are checked before restore, with an automatic Undo", "Back button closes sheets; bigger tap targets; link rows wrap", "Custom hills in Settings; clearer snow-report failure and stale states", "Goal and pass price edit the season you're viewing"]],
@@ -3086,6 +3140,7 @@ addEventListener("popstate", () => {
 
 // ---------- Startup ----------
 render();
+applyOfficial();
 loadReport(false);
 loadAvy(false);
 (async () => { try { if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) await navigator.storage.persist(); } catch(e){} })();
