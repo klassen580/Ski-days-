@@ -252,6 +252,7 @@ a.chip{text-decoration:none;color:var(--ink);background:var(--bg2);border:1px so
 .srcLine{font-size:12px;color:var(--mute);margin-top:8px}
 .srcLine.ok{color:#8fe3b0}
 .srcPill.ok{border-color:#2fbf71;color:#8fe3b0}
+.photoMissing{margin-top:8px;padding:10px 12px;border-radius:10px;border:1px dashed #cddbeb;font-size:12px;color:#4a6584}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
 .stakeCard{display:flex;gap:6px;align-items:center;padding:12px 14px 6px 4px}
 .stake{flex:0 0 auto}
@@ -498,9 +499,10 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
   <div id="sPasteBox" style="display:none;margin-top:8px"><textarea id="sPaste" placeholder="Long-press here and tap Paste"></textarea><button class="primary" id="sPasteGo" style="width:100%;margin-top:6px">Restore from pasted backup</button></div>
   <button id="sUndo" style="display:none;width:100%;margin-top:8px">↩️ Undo last restore</button>
   <p class="mute small" id="sBackupInfo"></p>
+  <p class="mute small" id="sPhotoCount"></p>
   <p class="mute small">Moving to a new phone or another browser? Tap <b>Copy backup</b> (or <b>Export file</b>) here, then <b>Paste backup</b> (or <b>Import file</b>) there.</p>
   <input type="file" id="sImport" accept="application/json" style="display:none">
-  <p class="mute small">Backups include all days, totals, gear and settings. Photos stay on this phone only.</p>
+  <p class="mute small">Backups include all days, totals, gear, settings and photos.</p>
   <div class="row" style="margin-top:18px"><button class="primary" id="sClose">Done</button></div>
 </div></div>
 
@@ -1052,7 +1054,7 @@ function openSettings(){
   const cur = setSeason = currentSeason;
   $("sSeasonTitle").textContent = cur === seasonOf(todayStr()) ? `This season (${cur})` : `Season ${cur}`;
   fillHillForm(null); renderCustomHills();
-  $("sSiri").value = location.href.split(/[?#]/)[0] + "?log=home"; renderHomeHelp(); renderVersion();
+  $("sSiri").value = location.href.split(/[?#]/)[0] + "?log=home"; renderHomeHelp(); renderVersion(); renderPhotoCount();
   $("sBackupInfo").textContent = state.lastBackup ? `Last backup: ${fmtDate(state.lastBackup)}` : "No backup yet.";
   $("sGoal").value = state.goals[cur] || ""; $("sPass").value = state.passes[cur] || ""; $("sTicket").value = state.settings.ticket || "";
   renderUndo();
@@ -1099,6 +1101,29 @@ $("sClose").onclick = () => {
 };
 function markBackup(){ state.lastBackup = todayStr(); save(); renderBackupNag(); }
 function backupJSON(){ return JSON.stringify(Object.assign({}, state, {lastBackup: todayStr()})); }
+const blobToDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+function photoIds(){ return [...new Set(state.days.filter(d => d.photo).map(d => d.id).concat(...(state.trips || []).map(t => t.photos || [])))]; }
+async function collectPhotos(){
+  const out = {};
+  for (const id of photoIds()){ try { const b = await PDB.getStrict(id); if (b) out[id] = await blobToDataURL(b); } catch(e){} }
+  return out;
+}
+async function backupJSONWithPhotos(){ const photos = await collectPhotos(); return {json: JSON.stringify(Object.assign({}, state, {lastBackup: todayStr(), photos})), n: Object.keys(photos).length}; }
+async function importPhotos(map){
+  if (!map || typeof map !== "object") return 0;
+  let n = 0;
+  for (const [id, url] of Object.entries(map)){
+    const key = String(id).replace(/[^\w.-]/g, "");
+    if (!key || typeof url !== "string" || !/^data:image\/(jpeg|png|webp|gif);base64,/.test(url)) continue;
+    try { const blob = await (await fetch(url)).blob(); await PDB.put(key, blob); delete thumbCache[key]; n++; } catch(e){}
+  }
+  return n;
+}
+async function renderPhotoCount(){
+  const el = $("sPhotoCount"); if (!el) return;
+  const total = await PDB.count(), want = photoIds().length;
+  el.textContent = total == null ? "📷 Couldn't read photo storage. Close and reopen the app." : `📷 ${total} photo${total === 1 ? "" : "s"} saved on this device${want > total ? ` · ${want - total} of your days' photos aren't here (they may be in Safari or the home screen app)` : ""}`;
+}
 const SNAP_KEY = "skidays.preRestore";
 function snapshotBeforeRestore(){
   try { localStorage.setItem(SNAP_KEY, JSON.stringify({at: new Date().toISOString(), state})); return true; }
@@ -1188,17 +1213,31 @@ function restoreFrom(text){
   if (!clean) return toast("That isn't a Ski Days backup");
   const {data, skipped} = clean;
   if (!data.days.length && raw.days.length) return toast("None of the days in that backup could be read. Your data wasn't changed.");
-  confirmBox(`Replace this app's data with ${data.days.length} day${data.days.length === 1 ? "" : "s"} from the backup?${skipped ? ` ${skipped} damaged record${skipped === 1 ? "" : "s"} will be skipped.` : ""} Your current data is saved first so you can undo.`, () => applyRestore(data));
+  const nPhotos = raw.photos && typeof raw.photos === "object" ? Object.keys(raw.photos).length : 0;
+  confirmBox(`Replace this app's data with ${data.days.length} day${data.days.length === 1 ? "" : "s"}${nPhotos ? ` and ${nPhotos} photo${nPhotos === 1 ? "" : "s"}` : ""} from the backup?${skipped ? ` ${skipped} damaged record${skipped === 1 ? "" : "s"} will be skipped.` : ""} Your current data is saved first so you can undo.`, async () => {
+    applyRestore(data);
+    if (nPhotos){ const n = await importPhotos(raw.photos); render(); renderPhotoCount(); toast(`Backup restored ✅ with ${n} photo${n === 1 ? "" : "s"}`); }
+  });
 }
 $("sCopy").onclick = async () => {
-  try { await navigator.clipboard.writeText(backupJSON()); markBackup(); toast("Backup copied. Now Paste backup in the other app."); }
+  // ClipboardItem with a promise keeps iPhone's "user tapped" permission while photos are gathered
+  let n = 0;
+  const textPromise = backupJSONWithPhotos().then(r => { n = r.n; return new Blob([r.json], {type: "text/plain"}); });
+  try {
+    if (!window.ClipboardItem) throw new Error("no ClipboardItem");
+    await navigator.clipboard.write([new ClipboardItem({"text/plain": textPromise})]);
+    markBackup(); toast(`Backup copied${n ? ` with ${n} photo${n === 1 ? "" : "s"}` : ""}. Now Paste backup in the other app.`); return;
+  } catch(e){}
+  try { await navigator.clipboard.writeText(backupJSON()); markBackup(); toast("Backup copied (without photos; use Export file to include them). Now Paste backup in the other app."); }
   catch(e){ $("sPasteBox").style.display = ""; $("sPaste").value = backupJSON(); $("sPaste").select(); toast("Select all and copy the text"); }
 };
 $("sPasteBtn").onclick = () => { $("sPasteBox").style.display = $("sPasteBox").style.display === "none" ? "" : "none"; };
 $("sPasteGo").onclick = () => restoreFrom($("sPaste").value.trim());
-$("sExport").onclick = () => {
+$("sExport").onclick = async () => {
   markBackup();
-  const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+  const {json, n} = await backupJSONWithPhotos();
+  if (n) toast(`Exporting with ${n} photo${n === 1 ? "" : "s"}…`);
+  const blob = new Blob([json], {type:"application/json"});
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `ski-days-${todayStr()}.json`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 };
@@ -2532,16 +2571,35 @@ const PDB = {
     return new Promise((res, rej) => { try {
       const r = indexedDB.open("skidays-photos", 1);
       r.onupgradeneeded = () => r.result.createObjectStore("photos");
-      r.onsuccess = () => { this.db = r.result; res(this.db); }; r.onerror = () => rej(r.error);
+      r.onsuccess = () => { const db = r.result; this.db = db;
+        // iPhone can drop the connection while the app is in the background: forget it so the next call reconnects
+        db.onclose = () => { if (this.db === db) this.db = null; };
+        db.onversionchange = () => { db.close(); if (this.db === db) this.db = null; };
+        res(db); };
+      r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error("Photo storage is busy"));
     } catch(e){ rej(e); } }); },
-  async tx(mode, fn){ const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction("photos", mode); const q = fn(t.objectStore("photos")); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error("Photo storage aborted")); }); },
+  run(mode, fn){ return this.open().then(db => new Promise((res, rej) => { let t;
+    try { t = db.transaction("photos", mode); } catch(e){ return rej(e); }
+    const q = fn(t.objectStore("photos")); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error("Photo storage aborted")); })); },
+  async tx(mode, fn){ try { return await this.run(mode, fn); } catch(e){ this.db = null; return await this.run(mode, fn); } },   // one reconnect + retry
   put(id, blob){ return this.tx("readwrite", s => s.put(blob, id)); },
-  get(id){ return this.tx("readonly", s => s.get(id)).catch(() => null); },
-  del(id){ return this.tx("readwrite", s => s.delete(id)).catch(() => null); }
+  getStrict(id){ return this.tx("readonly", s => s.get(id)); },          // throws if storage can't be read
+  get(id){ return this.getStrict(id).catch(() => null); },
+  del(id){ return this.tx("readwrite", s => s.delete(id)).catch(() => null); },
+  count(){ return this.tx("readonly", s => s.count()).catch(() => null); }
 };
 const thumbCache = {};
 async function photoURL(id){ if (thumbCache[id]) return thumbCache[id]; const b = await PDB.get(id); if (!b) return null; return thumbCache[id] = URL.createObjectURL(b); }
-function loadThumbs(){ document.querySelectorAll("img[data-photo]").forEach(async img => { const u = await photoURL(img.dataset.photo); if (u) img.src = u; else img.remove(); }); }
+function loadThumbs(){ document.querySelectorAll("img[data-photo]").forEach(async img => {
+  const id = img.dataset.photo;
+  if (thumbCache[id]){ img.src = thumbCache[id]; return; }
+  let b, failed = false; try { b = await PDB.getStrict(id); } catch(e){ failed = true; }
+  if (b){ img.src = thumbCache[id] = URL.createObjectURL(b); return; }
+  if (img.classList.contains("tripThumb") || img.closest(".tp")){ img.style.visibility = "hidden"; return; }
+  const note = document.createElement("div"); note.className = "photoMissing";
+  note.textContent = failed ? "📷 Couldn't load this photo. Close and reopen the app." : "📷 Photo isn't saved on this device. It may be in Safari or the home screen app.";
+  img.replaceWith(note);
+}); }
 let editPhoto = null; // Blob | "remove" | null
 async function showPhotoBox(day){
   const box = $("fPhotoBox"); box.innerHTML = "";
@@ -3047,8 +3105,9 @@ function renderHomeHelp(){
 }
 
 // ---------- Version tracker ----------
-const APP_VERSION = "2026-11-25a";
+const APP_VERSION = "2026-11-25b";
 const CHANGELOG = [
+  ["2026-11-25b", "Photos in backups", ["Export, Copy and Paste backup now include your photos", "The app reconnects to photo storage if iPhone drops it", "A missing photo shows a note instead of disappearing", "Settings shows how many photos are saved on this device"]],
   ["2026-11-25a", "Official hill snow reports", ["Alberta & BC hills now show the resort's own reported new snow, base depth and lifts open, checked every hour", "Numbers are labelled ✅ Hill report or 📡 Model so you know which you're seeing", "Forecasts (next 24h, 7-day) still come from the weather model"]],
   ["2026-11-24b", "Lift Ticket Night design polish", ["Calmer colours so pow days stand out most", "Larger, easier-to-read text and more spacing", "Line icons on the tabs and subtle animations on new tickets", "Photo backgrounds on empty screens"]],
   ["2026-11-24a", "Version tracker + iPhone/Android help", ["What's new list in Settings, and a one-time note after each update", "Help text adapts to iPhone or Android (home screen, Siri, location settings)", "Built on Echelon's reliability update"]],
