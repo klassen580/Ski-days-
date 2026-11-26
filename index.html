@@ -400,15 +400,14 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
   </div>
 
   <div id="viewSeason">
+  <div class="stats" id="stats" style="margin-bottom:10px"></div>
+  <div id="goalCard"></div>
   <div id="backupNag"></div>
   <div id="alertBox"></div>
   <div id="homeCard"></div>
   <div id="nearCard"></div>
   <div id="todayCard" class="card today"></div>
-  <div id="goalCard"></div>
   <div id="tripsCard"></div>
-
-  <div class="stats" id="stats"></div>
 
   <h2 class="display"><span class="sym blue"></span>Hills this season</h2>
   <div class="card" id="hillBars"></div>
@@ -3168,8 +3167,9 @@ function renderHomeHelp(){
 }
 
 // ---------- Version tracker ----------
-const APP_VERSION = "2026-11-25c";
+const APP_VERSION = "2026-11-25d";
 const CHANGELOG = [
+  ["2026-11-25d", "Season page layout", ["Ski days, pow days and cm fresh tiles plus the snow stake now sit at the top of the Season page"]],
   ["2026-11-25c", "Weekly backups", ["Automatic weekly snapshots inside the app (last 4 kept), restorable from Settings", "A weekly reminder with one-tap Save backup to your phone, photos included", "On iPhone it opens the share sheet: choose Save to Files → iCloud Drive"]],
   ["2026-11-25b", "Photos in backups", ["Export, Copy and Paste backup now include your photos", "The app reconnects to photo storage if iPhone drops it", "A missing photo shows a note instead of disappearing", "Settings shows how many photos are saved on this device"]],
   ["2026-11-25a", "Official hill snow reports", ["Alberta & BC hills now show the resort's own reported new snow, base depth and lifts open, checked every hour", "Numbers are labelled ✅ Hill report or 📡 Model so you know which you're seeing", "Forecasts (next 24h, 7-day) still come from the weather model"]],
