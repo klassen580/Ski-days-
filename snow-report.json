@@ -2,7 +2,7 @@
  "errors": {
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-25T09:19-07:00",
+ "generated": "2026-11-25T18:27-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 10,
@@ -26,10 +26,10 @@
     },
     {
      "cm": 5,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "lifts_open": 0,
    "lifts_total": 16,
    "new24_cm": 5,
@@ -59,10 +59,10 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "new24_cm": 0,
    "new48_cm": 0,
    "recent_total_cm": 0,
@@ -90,10 +90,10 @@
     },
     {
      "cm": 2,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "new24_cm": 2,
    "new48_cm": 2,
    "recent_total_cm": 13,
@@ -122,10 +122,10 @@
     },
     {
      "cm": 3,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "lifts_open": 0,
    "lifts_total": 5,
    "new24_cm": 3,
@@ -155,10 +155,10 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "new24_cm": 0,
    "new48_cm": 0,
    "recent_total_cm": 3,
@@ -187,10 +187,10 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "lifts_open": 5,
    "lifts_total": 13,
    "mid_cm": 25,
@@ -224,10 +224,10 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "lifts_open": 3,
    "lifts_total": 7,
    "mid_cm": 20,
@@ -260,10 +260,10 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "lifts_open": 2,
    "lifts_total": 6,
    "mid_cm": 41,
@@ -297,10 +297,10 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "lifts_open": 2,
    "lifts_total": 7,
    "new24_cm": 0,
@@ -333,10 +333,10 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "new24_cm": 0,
    "new48_cm": 0,
    "recent_total_cm": 0,
@@ -364,10 +364,10 @@
     },
     {
      "cm": 28,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "new24_cm": 28,
    "new48_cm": 29,
    "recent_total_cm": 43,
@@ -396,10 +396,10 @@
     },
     {
      "cm": 8,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "lifts_open": 0,
    "lifts_total": 13,
    "new24_cm": 8,
@@ -430,10 +430,10 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "lifts_open": 3,
    "lifts_total": 12,
    "mid_cm": 30,
@@ -467,10 +467,10 @@
     },
     {
      "cm": 28,
-     "label": "Today"
+     "label": "Wed"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Wed",
    "lifts_open": 9,
    "lifts_total": 26,
    "mid_cm": 91,
