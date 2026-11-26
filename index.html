@@ -500,6 +500,11 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
   <button id="sUndo" style="display:none;width:100%;margin-top:8px">↩️ Undo last restore</button>
   <p class="mute small" id="sBackupInfo"></p>
   <p class="mute small" id="sPhotoCount"></p>
+  <button id="sSaveFile" class="primary" style="width:100%;margin-top:4px">💾 Save backup to phone</button>
+  <h2 class="display" style="font-size:20px">📸 Automatic snapshots</h2>
+  <p class="mute small">Saved inside the app once a week (last 4 kept). Handy for undoing mistakes, but they live in the same storage as the app, so also save a backup to your phone.</p>
+  <div id="sSnaps"></div>
+  <button id="sSnapNow" class="small" style="margin-top:8px;padding:6px 10px">📸 Take a snapshot now</button>
   <p class="mute small">Moving to a new phone or another browser? Tap <b>Copy backup</b> (or <b>Export file</b>) here, then <b>Paste backup</b> (or <b>Import file</b>) there.</p>
   <input type="file" id="sImport" accept="application/json" style="display:none">
   <p class="mute small">Backups include all days, totals, gear, settings and photos.</p>
@@ -1054,7 +1059,7 @@ function openSettings(){
   const cur = setSeason = currentSeason;
   $("sSeasonTitle").textContent = cur === seasonOf(todayStr()) ? `This season (${cur})` : `Season ${cur}`;
   fillHillForm(null); renderCustomHills();
-  $("sSiri").value = location.href.split(/[?#]/)[0] + "?log=home"; renderHomeHelp(); renderVersion(); renderPhotoCount();
+  $("sSiri").value = location.href.split(/[?#]/)[0] + "?log=home"; renderHomeHelp(); renderVersion(); renderPhotoCount(); renderSnaps(); prepareBackupFile();
   $("sBackupInfo").textContent = state.lastBackup ? `Last backup: ${fmtDate(state.lastBackup)}` : "No backup yet.";
   $("sGoal").value = state.goals[cur] || ""; $("sPass").value = state.passes[cur] || ""; $("sTicket").value = state.settings.ticket || "";
   renderUndo();
@@ -1219,6 +1224,8 @@ function restoreFrom(text){
     if (nPhotos){ const n = await importPhotos(raw.photos); render(); renderPhotoCount(); toast(`Backup restored ✅ with ${n} photo${n === 1 ? "" : "s"}`); }
   });
 }
+$("sSaveFile").onclick = () => saveBackupFile();
+$("sSnapNow").onclick = () => autoSnapshot(true);
 $("sCopy").onclick = async () => {
   // ClipboardItem with a promise keeps iPhone's "user tapped" permission while photos are gathered
   let n = 0;
@@ -2829,12 +2836,68 @@ function renderBackupNag(){
   const n = state.days.length + state.tallies.length;
   const last = state.lastBackup, age = last ? (parseYmd(todayStr()) - parseYmd(last)) / 864e5 : 999;
   const snoozed = state.nagSnooze && state.nagSnooze >= todayStr();
-  if (n < 3 || age < 21 || snoozed){ el.innerHTML = ""; return; }
+  if (n < 3 || age < 7 || snoozed){ el.innerHTML = ""; return; }
   el.innerHTML = `<div class="card" style="border-color:var(--warn);display:flex;gap:10px;align-items:center">
-    <div style="flex:1" class="small">💾 <b>Back up your ski days.</b> They're only saved in this ${isInstalled() ? (PLATFORM === "ios" ? "home screen app" : "installed app") : "browser"} on this phone.${last ? ` Last backup ${fmtDate(last)}.` : ""}</div>
+    <div style="flex:1" class="small">💾 <b>Weekly backup:</b> save a copy to your phone${PLATFORM === "ios" ? " (Save to Files → iCloud Drive)" : ""}. They're only saved in this ${isInstalled() ? (PLATFORM === "ios" ? "home screen app" : "installed app") : "browser"} on this phone.${last ? ` Last backup ${fmtDate(last)}.` : ""}</div>
     <button id="nagGo" class="primary" style="flex:0 0 auto;padding:6px 10px;font-size:13px">Back up</button><button id="nagLater" style="flex:0 0 auto;padding:6px 8px;font-size:13px">Later</button></div>`;
-  $("nagGo").onclick = () => $("sExport").click();
-  $("nagLater").onclick = () => { state.nagSnooze = addDays(todayStr(), 7); save(); renderBackupNag(); };
+  prepareBackupFile();
+  $("nagGo").onclick = () => saveBackupFile();
+  $("nagLater").onclick = () => { state.nagSnooze = addDays(todayStr(), 2); save(); renderBackupNag(); };
+}
+
+// ---------- Weekly backups: one-tap file + automatic in-app snapshots ----------
+let preparedBackup = null, preparing = null;
+function prepareBackupFile(){
+  if (preparing) return preparing;
+  return preparing = backupJSONWithPhotos().then(r => {
+    preparedBackup = {file: new File([r.json], `ski-days-backup-${todayStr()}.json`, {type: "application/json"}), n: r.n};
+    return preparedBackup; }).finally(() => { preparing = null; });
+}
+async function saveBackupFile(){
+  const b = preparedBackup || await prepareBackupFile();
+  preparedBackup = null;
+  const done = how => { markBackup(); toast(`💾 Backup ${how}${b.n ? ` with ${b.n} photo${b.n === 1 ? "" : "s"}` : ""}. See you next week!`); };
+  if (navigator.canShare && navigator.canShare({files: [b.file]})){
+    try { await navigator.share({files: [b.file], title: "Ski Days backup"}); done("saved"); return; }
+    catch(e){ if (e && e.name === "AbortError") return; }   // closed the share sheet: try again later
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(b.file); a.download = b.file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000); done("downloaded");
+}
+// Automatic snapshots inside the app (no photos; those stay in photo storage). Keeps the last 4.
+const SDB = {
+  db: null,
+  open(){ if (this.db) return Promise.resolve(this.db);
+    return new Promise((res, rej) => { try { const r = indexedDB.open("skidays-backups", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("snaps", {keyPath: "at"});
+      r.onsuccess = () => { const db = r.result; this.db = db; db.onclose = () => { if (this.db === db) this.db = null; }; res(db); };
+      r.onerror = () => rej(r.error); } catch(e){ rej(e); } }); },
+  run(mode, fn){ return this.open().then(db => new Promise((res, rej) => { let t; try { t = db.transaction("snaps", mode); } catch(e){ return rej(e); }
+    const q = fn(t.objectStore("snaps")); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); })); },
+  async tx(mode, fn){ try { return await this.run(mode, fn); } catch(e){ this.db = null; return await this.run(mode, fn); } },
+  all(){ return this.tx("readonly", s => s.getAll()).then(a => (a || []).sort((x, y) => y.at.localeCompare(x.at))).catch(() => []); },
+  put(o){ return this.tx("readwrite", s => s.put(o)); },
+  del(at){ return this.tx("readwrite", s => s.delete(at)).catch(() => null); }
+};
+async function autoSnapshot(force){
+  if (!state.days.length && !state.tallies.length) return;
+  const snaps = await SDB.all(), last = snaps[0];
+  const age = last ? (Date.now() - Date.parse(last.at)) / 864e5 : 999;
+  if (!force && age < 7) return;
+  try {
+    await SDB.put({at: new Date().toISOString(), days: state.days.length, json: JSON.stringify(state)});
+    for (const old of (await SDB.all()).slice(4)) await SDB.del(old.at);
+    if (force) toast("📸 Snapshot saved");
+  } catch(e){ if (force) toast("Couldn't save a snapshot"); }
+  renderSnaps();
+}
+async function renderSnaps(){
+  const el = $("sSnaps"); if (!el) return;
+  const snaps = await SDB.all();
+  el.innerHTML = snaps.length ? snaps.map(x => `<div class="row" style="margin-top:6px;align-items:center"><span class="small" style="flex:1">📸 ${new Date(x.at).toLocaleDateString("en-CA", {weekday:"short", month:"short", day:"numeric"})} · ${x.days} day${x.days === 1 ? "" : "s"}</span>
+      <button class="small" data-snap="${esc(x.at)}" style="flex:0 0 auto;padding:6px 10px">Restore</button></div>`).join("")
+    : `<p class="mute small">No snapshots yet. The first one is saved automatically.</p>`;
+  el.querySelectorAll("[data-snap]").forEach(b => b.onclick = async () => { const x = (await SDB.all()).find(z => z.at === b.dataset.snap); if (x) restoreFrom(x.json); });
 }
 // ---------- Share studio: season & day cards ----------
 const SHARE_SIZES = {story: [1080, 1920, "Story"], post: [1080, 1350, "Post"], square: [1080, 1080, "Square"]};
@@ -3105,8 +3168,9 @@ function renderHomeHelp(){
 }
 
 // ---------- Version tracker ----------
-const APP_VERSION = "2026-11-25b";
+const APP_VERSION = "2026-11-25c";
 const CHANGELOG = [
+  ["2026-11-25c", "Weekly backups", ["Automatic weekly snapshots inside the app (last 4 kept), restorable from Settings", "A weekly reminder with one-tap Save backup to your phone, photos included", "On iPhone it opens the share sheet: choose Save to Files → iCloud Drive"]],
   ["2026-11-25b", "Photos in backups", ["Export, Copy and Paste backup now include your photos", "The app reconnects to photo storage if iPhone drops it", "A missing photo shows a note instead of disappearing", "Settings shows how many photos are saved on this device"]],
   ["2026-11-25a", "Official hill snow reports", ["Alberta & BC hills now show the resort's own reported new snow, base depth and lifts open, checked every hour", "Numbers are labelled ✅ Hill report or 📡 Model so you know which you're seeing", "Forecasts (next 24h, 7-day) still come from the weather model"]],
   ["2026-11-24b", "Lift Ticket Night design polish", ["Calmer colours so pow days stand out most", "Larger, easier-to-read text and more spacing", "Line icons on the tabs and subtle animations on new tickets", "Photo backgrounds on empty screens"]],
@@ -3201,6 +3265,7 @@ addEventListener("popstate", () => {
 render();
 applyOfficial();
 loadReport(false);
+setTimeout(() => autoSnapshot(false), 3000);
 loadAvy(false);
 (async () => { try { if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) await navigator.storage.persist(); } catch(e){} })();
 if (state.settings.useLoc) locate(false);
