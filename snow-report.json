@@ -2,7 +2,7 @@
  "errors": {
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-26T09:18-07:00",
+ "generated": "2026-11-26T10:59-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 10,
@@ -451,6 +451,7 @@
    "url": "https://www.onthesnow.com/alberta/sunshine-village/skireport"
   },
   "whistler": {
+   "base_cm": 91,
    "closed": false,
    "days": [
     {
@@ -477,12 +478,12 @@
    "latest_label": "Today",
    "lifts_open": 10,
    "lifts_total": 26,
-   "mid_cm": 91,
    "new24_cm": 20,
    "new48_cm": 48,
    "recent_total_cm": 58,
    "runs_open": 10,
    "runs_total": 295,
+   "summit_cm": 91,
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/british-columbia/whistler-blackcomb/skireport"
   }
