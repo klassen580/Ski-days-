@@ -2,7 +2,7 @@
  "errors": {
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-26T10:59-07:00",
+ "generated": "2026-11-26T12:10-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 10,
@@ -43,10 +43,6 @@
    "days": [
     {
      "cm": 0,
-     "label": "Sat"
-    },
-    {
-     "cm": 0,
      "label": "Sun"
     },
     {
@@ -60,13 +56,17 @@
     {
      "cm": 0,
      "label": "Wed"
+    },
+    {
+     "cm": 0,
+     "label": "Today"
     }
    ],
-   "latest_label": "Wed",
+   "latest_label": "Today",
    "new24_cm": 0,
    "new48_cm": 0,
    "recent_total_cm": 0,
-   "updated": "2026-11-25",
+   "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/alberta/castle-mountain/skireport"
   },
   "fernie": {
