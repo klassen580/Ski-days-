@@ -2,7 +2,7 @@
  "errors": {
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-26T08:14-07:00",
+ "generated": "2026-11-26T09:18-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 10,
@@ -391,21 +391,21 @@
      "label": "Tue"
     },
     {
-     "cm": 8,
+     "cm": 1,
      "label": "Wed"
     },
     {
-     "cm": 5,
+     "cm": 3,
      "label": "Today"
     }
    ],
    "latest_label": "Today",
-   "lifts_open": 4,
+   "lifts_open": 5,
    "lifts_total": 13,
    "mid_cm": 30,
-   "new24_cm": 5,
-   "new48_cm": 13,
-   "recent_total_cm": 13,
+   "new24_cm": 3,
+   "new48_cm": 4,
+   "recent_total_cm": 5,
    "runs_open": 4,
    "runs_total": 144,
    "summit_cm": 38,
