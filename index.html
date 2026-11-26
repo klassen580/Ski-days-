@@ -252,6 +252,7 @@ a.chip{text-decoration:none;color:var(--ink);background:var(--bg2);border:1px so
 .srcLine{font-size:12px;color:var(--mute);margin-top:8px}
 .srcLine.ok{color:#8fe3b0}
 .srcPill.ok{border-color:#2fbf71;color:#8fe3b0}
+.ticketsMore{width:100%;margin:2px 0 12px;padding:12px;border-radius:14px;font-weight:700;border:1px dashed var(--line);background:rgba(255,255,255,.04)}
 .photoMissing{margin-top:8px;padding:10px 12px;border-radius:10px;border:1px dashed #cddbeb;font-size:12px;color:#4a6584}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
 .stakeCard{display:flex;gap:6px;align-items:center;padding:12px 14px 6px 4px}
@@ -574,6 +575,7 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
 <div class="toast" id="toast"></div>
 
 <script>
+var showAllTickets = false;
 "use strict";
 // ---------- Hills (approximate base-area coordinates; mid-mountain elevation in m) ----------
 const BUILTIN_HILLS = [
@@ -809,7 +811,10 @@ function render(){
   const total = days.length;
   const tallyCards = tal.map(t => `<div class="card tally"><b class="big display">+${t.count}</b>
     <div><b>${esc(hillById(t.hill).name)}</b><div class="mute small">Entered as a season total</div></div></div>`).join("");
-  $("dayList").innerHTML = (days.length || tal.length) ? days.map((d, i) => {
+  const TICKET_LIMIT = 10, shown = showAllTickets ? days : days.slice(0, TICKET_LIMIT);
+  const moreBtn = days.length > TICKET_LIMIT
+    ? `<button id="ticketsMore" class="ticketsMore">${showAllTickets ? "Show latest 10 only ▲" : `🎟️ Show all ${days.length} tickets ▼`}</button>` : "";
+  $("dayList").innerHTML = (days.length || tal.length) ? shown.map((d, i) => {
     const dt = parseYmd(d.date);
     const pow = d.cond && (d.cond.snow24 >= 10 || d.cond.snow48 >= 20);
     return `<div class="ticket day" data-id="${d.id}">
@@ -821,8 +826,12 @@ function render(){
         ${crashLine(d)}
         ${d.notes?`<div class="notes">${esc(d.notes)}</div>`:""}
         ${d.photo?`<img class="thumb" data-photo="${d.id}" alt="">`:""}</div></div>`;
-  }).join("") + tallyCards : `<div class="empty"><span class="display">No turns logged yet</span>Your ${currentSeason} lift tickets will show up here.</div>`;
+  }).join("") + moreBtn + tallyCards : `<div class="empty"><span class="display">No turns logged yet</span>Your ${currentSeason} lift tickets will show up here.</div>`;
   document.querySelectorAll(".day").forEach(el => el.onclick = () => openDay(state.days.find(d => d.id === el.dataset.id)));
+  if ($("ticketsMore")) $("ticketsMore").onclick = () => {
+    const wasAll = showAllTickets; showAllTickets = !showAllTickets; render();
+    if (wasAll){ const h = $("dayList"); if (h) h.scrollIntoView({behavior: "smooth", block: "start"}); }
+  };
   loadThumbs(); renderBackupNag(); renderHome(); renderNear(); renderGoal(); renderTrips(); renderAlerts();
   if (viewOn("viewStats")) renderStatsView();
   if (viewOn("viewGear")) renderGear();
@@ -895,7 +904,7 @@ $("fDelete").onclick = () => confirmBox("Delete this ski day?", () => {
   render(); $("dayModal").classList.remove("open");
 });
 $("addBtn").onclick = () => openDay(null);
-$("seasonSel").onchange = e => { currentSeason = e.target.value; render(); };
+$("seasonSel").onchange = e => { currentSeason = e.target.value; showAllTickets = false; render(); };
 
 
 // ---------- Past days: calendar + season-total calculator ----------
@@ -3167,8 +3176,9 @@ function renderHomeHelp(){
 }
 
 // ---------- Version tracker ----------
-const APP_VERSION = "2026-11-25d";
+const APP_VERSION = "2026-11-25e";
 const CHANGELOG = [
+  ["2026-11-25e", "Tidier ticket list", ["Season page shows your latest 10 lift tickets, with a Show all tickets button"]],
   ["2026-11-25d", "Season page layout", ["Ski days, pow days and cm fresh tiles plus the snow stake now sit at the top of the Season page"]],
   ["2026-11-25c", "Weekly backups", ["Automatic weekly snapshots inside the app (last 4 kept), restorable from Settings", "A weekly reminder with one-tap Save backup to your phone, photos included", "On iPhone it opens the share sheet: choose Save to Files → iCloud Drive"]],
   ["2026-11-25b", "Photos in backups", ["Export, Copy and Paste backup now include your photos", "The app reconnects to photo storage if iPhone drops it", "A missing photo shows a note instead of disappearing", "Settings shows how many photos are saved on this device"]],
