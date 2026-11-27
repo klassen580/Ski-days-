@@ -1,9 +1,8 @@
 {
  "errors": {
-  "louise_resort": "resort page not readable; using OnTheSnow",
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-26T23:11-07:00",
+ "generated": "2026-11-27T00:32-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 10,
@@ -148,41 +147,24 @@
   "louise": {
    "base_cm": 30,
    "closed": false,
-   "days": [
-    {
-     "cm": 0,
-     "label": "Sun"
-    },
-    {
-     "cm": 0,
-     "label": "Mon"
-    },
-    {
-     "cm": 5,
-     "label": "Tue"
-    },
-    {
-     "cm": 0,
-     "label": "Wed"
-    },
-    {
-     "cm": 0,
-     "label": "Thu"
-    }
-   ],
-   "latest_label": "Thu",
    "lifts_open": 5,
    "lifts_total": 13,
    "mid_cm": 25,
+   "mid_new24_cm": 0,
+   "mid_new7_cm": 5,
+   "mid_overnight_cm": 0,
+   "mid_season_cm": 42,
    "new24_cm": 0,
-   "new48_cm": 0,
-   "recent_total_cm": 5,
+   "new7_cm": 6,
+   "overnight_cm": 0,
    "runs_open": 10,
    "runs_total": 171,
-   "source_name": "OnTheSnow",
+   "season_cm": 50,
+   "source_name": "Lake Louise snow report",
    "summit_cm": 30,
-   "updated": "2026-11-26",
-   "url": "https://www.onthesnow.com/alberta/lake-louise/skireport"
+   "updated": "2026-11-27",
+   "upper_label": "Back Bowls",
+   "url": "https://reports.skilouise.com/"
   },
   "marmot": {
    "closed": false,
