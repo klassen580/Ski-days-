@@ -1,8 +1,9 @@
 {
  "errors": {
+  "norquay": "alberta/banff-norquay: HTTP Error 404: Not Found",
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-27T00:32-07:00",
+ "generated": "2026-11-27T04:02-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 10,
@@ -78,13 +79,9 @@
    "url": "https://www.onthesnow.com/british-columbia/fernie-alpine/skireport"
   },
   "kickinghorse": {
-   "base_cm": 38,
+   "base_cm": 43,
    "closed": true,
    "days": [
-    {
-     "cm": 0,
-     "label": "Sun"
-    },
     {
      "cm": 1,
      "label": "Mon"
@@ -100,16 +97,20 @@
     {
      "cm": 0,
      "label": "Thu"
+    },
+    {
+     "cm": 0,
+     "label": "Today"
     }
    ],
-   "latest_label": "Thu",
+   "latest_label": "Today",
    "lifts_open": 0,
    "lifts_total": 5,
    "new24_cm": 0,
-   "new48_cm": 3,
+   "new48_cm": 0,
    "recent_total_cm": 5,
    "source_name": "OnTheSnow",
-   "updated": "2026-11-26",
+   "updated": "2026-11-27",
    "url": "https://www.onthesnow.com/british-columbia/kicking-horse/skireport"
   },
   "kimberley": {
@@ -208,10 +209,6 @@
    "days": [
     {
      "cm": 0,
-     "label": "Sun"
-    },
-    {
-     "cm": 0,
      "label": "Mon"
     },
     {
@@ -225,9 +222,13 @@
     {
      "cm": 0,
      "label": "Thu"
+    },
+    {
+     "cm": 0,
+     "label": "Today"
     }
    ],
-   "latest_label": "Thu",
+   "latest_label": "Today",
    "lifts_open": 2,
    "lifts_total": 6,
    "mid_cm": 41,
