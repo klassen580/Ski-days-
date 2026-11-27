@@ -2,7 +2,7 @@
  "errors": {
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-26T17:04-07:00",
+ "generated": "2026-11-26T17:47-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 10,
@@ -35,6 +35,7 @@
    "new24_cm": 5,
    "new48_cm": 8,
    "recent_total_cm": 10,
+   "source_name": "OnTheSnow",
    "updated": "2026-11-25",
    "url": "https://www.onthesnow.com/british-columbia/big-white/skireport"
   },
@@ -66,6 +67,7 @@
    "new24_cm": 0,
    "new48_cm": 0,
    "recent_total_cm": 0,
+   "source_name": "OnTheSnow",
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/alberta/castle-mountain/skireport"
   },
@@ -97,6 +99,7 @@
    "new24_cm": 0,
    "new48_cm": 2,
    "recent_total_cm": 13,
+   "source_name": "OnTheSnow",
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/british-columbia/fernie-alpine/skireport"
   },
@@ -131,6 +134,7 @@
    "new24_cm": 0,
    "new48_cm": 3,
    "recent_total_cm": 5,
+   "source_name": "OnTheSnow",
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/british-columbia/kicking-horse/skireport"
   },
@@ -162,46 +166,31 @@
    "new24_cm": 0,
    "new48_cm": 0,
    "recent_total_cm": 3,
+   "source_name": "OnTheSnow",
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/british-columbia/kimberley/skireport"
   },
   "louise": {
    "base_cm": 30,
    "closed": false,
-   "days": [
-    {
-     "cm": 0,
-     "label": "Sun"
-    },
-    {
-     "cm": 0,
-     "label": "Mon"
-    },
-    {
-     "cm": 5,
-     "label": "Tue"
-    },
-    {
-     "cm": 0,
-     "label": "Wed"
-    },
-    {
-     "cm": 0,
-     "label": "Thu"
-    }
-   ],
-   "latest_label": "Thu",
    "lifts_open": 5,
    "lifts_total": 13,
    "mid_cm": 25,
+   "mid_new24_cm": 0,
+   "mid_new7_cm": 5,
+   "mid_overnight_cm": 0,
+   "mid_season_cm": 42,
    "new24_cm": 0,
-   "new48_cm": 0,
-   "recent_total_cm": 5,
+   "new7_cm": 6,
+   "overnight_cm": 0,
    "runs_open": 10,
    "runs_total": 171,
+   "season_cm": 50,
+   "source_name": "Lake Louise snow report",
    "summit_cm": 30,
    "updated": "2026-11-26",
-   "url": "https://www.onthesnow.com/alberta/lake-louise/skireport"
+   "upper_label": "Back Bowls",
+   "url": "https://reports.skilouise.com/"
   },
   "marmot": {
    "closed": false,
@@ -236,6 +225,7 @@
    "recent_total_cm": 0,
    "runs_open": 2,
    "runs_total": 91,
+   "source_name": "OnTheSnow",
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/alberta/marmot-basin/skireport"
   },
@@ -272,6 +262,7 @@
    "recent_total_cm": 0,
    "runs_open": 5,
    "runs_total": 75,
+   "source_name": "OnTheSnow",
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/alberta/nakiska-ski-area/skireport"
   },
@@ -308,6 +299,7 @@
    "recent_total_cm": 1,
    "runs_open": 3,
    "runs_total": 60,
+   "source_name": "OnTheSnow",
    "summit_cm": 36,
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/alberta/ski-banff-norquay/skireport"
@@ -340,6 +332,7 @@
    "new24_cm": 0,
    "new48_cm": 0,
    "recent_total_cm": 0,
+   "source_name": "OnTheSnow",
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/british-columbia/panorama-mountain-village/skireport"
   },
@@ -371,6 +364,7 @@
    "new24_cm": 43,
    "new48_cm": 71,
    "recent_total_cm": 84,
+   "source_name": "OnTheSnow",
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/british-columbia/revelstoke-mountain/skireport"
   },
@@ -408,6 +402,7 @@
    "recent_total_cm": 5,
    "runs_open": 4,
    "runs_total": 144,
+   "source_name": "OnTheSnow",
    "summit_cm": 38,
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/british-columbia/sun-peaks/skireport"
@@ -415,40 +410,20 @@
   "sunshine": {
    "base_cm": 38,
    "closed": false,
-   "days": [
-    {
-     "cm": 0,
-     "label": "Sun"
-    },
-    {
-     "cm": 0,
-     "label": "Mon"
-    },
-    {
-     "cm": 0,
-     "label": "Tue"
-    },
-    {
-     "cm": 0,
-     "label": "Wed"
-    },
-    {
-     "cm": 1,
-     "label": "Thu"
-    }
-   ],
-   "latest_label": "Thu",
    "lifts_open": 3,
    "lifts_total": 12,
    "mid_cm": 30,
+   "mid_new7_cm": 7,
    "new24_cm": 1,
-   "new48_cm": 1,
-   "recent_total_cm": 1,
+   "new7_cm": 3,
    "runs_open": 8,
    "runs_total": 140,
+   "season_cm": 66,
+   "source_name": "Sunshine Village mountain report",
    "summit_cm": 38,
    "updated": "2026-11-26",
-   "url": "https://www.onthesnow.com/alberta/sunshine-village/skireport"
+   "upper_label": "Upper mountain",
+   "url": "https://www.skibanff.com/the-mountain/mountain-report/current-conditions"
   },
   "whistler": {
    "base_cm": 91,
@@ -483,6 +458,7 @@
    "recent_total_cm": 58,
    "runs_open": 10,
    "runs_total": 295,
+   "source_name": "OnTheSnow",
    "summit_cm": 91,
    "updated": "2026-11-26",
    "url": "https://www.onthesnow.com/british-columbia/whistler-blackcomb/skireport"
