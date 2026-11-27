@@ -2,39 +2,13 @@
  "errors": {
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-26T17:47-07:00",
+ "generated": "2026-11-26T21:17-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 10,
    "closed": true,
-   "days": [
-    {
-     "cm": 0,
-     "label": "Sat"
-    },
-    {
-     "cm": 0,
-     "label": "Sun"
-    },
-    {
-     "cm": 2,
-     "label": "Mon"
-    },
-    {
-     "cm": 3,
-     "label": "Tue"
-    },
-    {
-     "cm": 5,
-     "label": "Wed"
-    }
-   ],
-   "latest_label": "Wed",
    "lifts_open": 0,
    "lifts_total": 16,
-   "new24_cm": 5,
-   "new48_cm": 8,
-   "recent_total_cm": 10,
    "source_name": "OnTheSnow",
    "updated": "2026-11-25",
    "url": "https://www.onthesnow.com/british-columbia/big-white/skireport"
