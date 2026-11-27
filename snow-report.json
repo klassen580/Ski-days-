@@ -2,7 +2,7 @@
  "errors": {
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-27T08:07-07:00",
+ "generated": "2026-11-27T09:15-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 10,
@@ -171,10 +171,6 @@
    "days": [
     {
      "cm": 0,
-     "label": "Sun"
-    },
-    {
-     "cm": 0,
      "label": "Mon"
     },
     {
@@ -188,19 +184,23 @@
     {
      "cm": 0,
      "label": "Thu"
+    },
+    {
+     "cm": 2,
+     "label": "Today"
     }
    ],
-   "latest_label": "Thu",
+   "latest_label": "Today",
    "lifts_open": 3,
    "lifts_total": 7,
    "mid_cm": 20,
-   "new24_cm": 0,
-   "new48_cm": 0,
-   "recent_total_cm": 0,
+   "new24_cm": 2,
+   "new48_cm": 2,
+   "recent_total_cm": 2,
    "runs_open": 2,
    "runs_total": 91,
    "source_name": "OnTheSnow",
-   "updated": "2026-11-26",
+   "updated": "2026-11-27",
    "url": "https://www.onthesnow.com/alberta/marmot-basin/skireport"
   },
   "nakiska": {
