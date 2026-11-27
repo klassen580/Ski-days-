@@ -2,7 +2,7 @@
  "errors": {
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-27T10:22-07:00",
+ "generated": "2026-11-27T15:05-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 25,
@@ -120,20 +120,20 @@
      "label": "Wed"
     },
     {
-     "cm": 0,
+     "cm": 5,
      "label": "Thu"
     },
     {
-     "cm": 0,
+     "cm": 8,
      "label": "Today"
     }
    ],
    "latest_label": "Today",
    "lifts_open": 0,
    "lifts_total": 5,
-   "new24_cm": 0,
-   "new48_cm": 0,
-   "recent_total_cm": 5,
+   "new24_cm": 8,
+   "new48_cm": 13,
+   "recent_total_cm": 18,
    "source_name": "OnTheSnow",
    "updated": "2026-11-27",
    "url": "https://www.onthesnow.com/british-columbia/kicking-horse/skireport"
