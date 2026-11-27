@@ -80,6 +80,58 @@ def parse(t, now):
     out["closed"] = bool(re.search(r"is closed for the season", t))
     return out
 
+# ---------- Resorts' own reports (centimetres, the numbers the hill posts) ----------
+MONTHS_LONG = {m: i for i, m in enumerate(["january","february","march","april","may","june","july","august","september","october","november","december"], 1)}
+def find_date(t, now):
+    m = re.search(r"(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})", t)
+    if m:
+        try: return datetime(int(m.group(3)), MONTHS_LONG[m.group(1).lower()], int(m.group(2))).date().isoformat()
+        except ValueError: pass
+    return None
+def cm_after(label, t):
+    m = re.search(label + r"\s*:?\s*(\d+(?:\.\d+)?)\s*cm", t, re.I)
+    return round(float(m.group(1))) if m else None
+
+def lake_louise(now):
+    """reports.skilouise.com: 'Back Bowls' (upper) and 'Mid Mountain' blocks in cm."""
+    for url in ["https://reports.skilouise.com/", "https://www.skilouise.com/snow-conditions/"]:
+        try: t = text_of(fetch(url))
+        except Exception: continue
+        up_i = t.find("Back Bowls"); mid_i = t.find("Mid Mountain")
+        if up_i < 0 or mid_i < 0: continue
+        up, mid = (t[up_i:mid_i], t[mid_i:mid_i + 600]) if up_i < mid_i else (t[up_i:up_i + 600], t[mid_i:up_i])
+        out = {"source_name": "Lake Louise snow report", "url": url,
+               "overnight_cm": cm_after(r"Overnight", up), "new24_cm": cm_after(r"Last 24 Hours", up), "new48_cm": cm_after(r"Last 48 Hours", up),
+               "new7_cm": cm_after(r"Last 7 Days", up), "base_cm": cm_after(r"Snow Depth", up), "season_cm": cm_after(r"Year to Date", up),
+               "mid_overnight_cm": cm_after(r"Overnight", mid), "mid_new24_cm": cm_after(r"Last 24 Hours", mid), "mid_new7_cm": cm_after(r"Last 7 Days", mid),
+               "mid_cm": cm_after(r"Snow Depth", mid), "mid_season_cm": cm_after(r"Year to Date", mid),
+               "upper_label": "Back Bowls", "updated": find_date(t, now)}
+        m = re.search(r"(\d+)\s+Lifts?,", t)
+        if m: out["lifts_open"] = int(m.group(1))
+        if out["new24_cm"] is not None or out["base_cm"] is not None:
+            return {k: v for k, v in out.items() if v is not None}
+    return None
+
+def sunshine(now):
+    """skibanff.com current conditions: Upper Mountain (7 day, base, cumulative) and Mid Mountain (24h, 7 days, settled base)."""
+    url = "https://www.skibanff.com/the-mountain/mountain-report/current-conditions"
+    try: t = text_of(fetch(url))
+    except Exception: return None
+    up_i = t.find("Upper Mountain Snow Report"); mid_i = t.find("Mid Mountain Snow Report")
+    if up_i < 0 and mid_i < 0: return None
+    up = t[up_i:up_i + 400] if up_i >= 0 else ""; mid = t[mid_i:mid_i + 500] if mid_i >= 0 else ""
+    out = {"source_name": "Sunshine Village mountain report", "url": url,
+           "new24_cm": cm_after(r"24 Hours", mid) if cm_after(r"24 Hours", mid) is not None else cm_after(r"24 Hours", up),
+           "overnight_cm": cm_after(r"Overnight", mid), "new48_cm": cm_after(r"48 Hours", mid),
+           "new7_cm": cm_after(r"7 Days?", up) if cm_after(r"7 Days?", up) is not None else cm_after(r"7 Days?", mid),
+           "base_cm": cm_after(r"Base", up), "season_cm": cm_after(r"Cumulative", up) or cm_after(r"Year", t),
+           "mid_new7_cm": cm_after(r"7 Days?", mid), "mid_cm": cm_after(r"Settled Base", t),
+           "upper_label": "Upper mountain", "updated": find_date(t, now)}
+    if out["new24_cm"] is None and out["base_cm"] is None: return None
+    return {k: v for k, v in out.items() if v is not None}
+
+RESORT_READERS = {"louise": lake_louise, "sunshine": sunshine}
+
 def main(path):
     now = datetime.now(timezone(timedelta(hours=-7)))   # Mountain Standard Time
     try:
@@ -88,6 +140,15 @@ def main(path):
         old = {}
     hills, errors = {}, {}
     for hid, paths in HILLS.items():
+        if hid in RESORT_READERS:
+            try: own = RESORT_READERS[hid](now)
+            except Exception as e: own = None; errors[hid + "_resort"] = str(e)[:200]
+            if own:
+                own.setdefault("updated", now.date().isoformat())
+                # fill gaps (lifts, closed flag, summit) from OnTheSnow below, but keep the resort's own numbers
+                hills[hid] = own
+            else:
+                errors[hid + "_resort"] = errors.get(hid + "_resort", "resort page not readable; using OnTheSnow")
         last = "not found"
         for p in paths:
             url = f"https://www.onthesnow.com/{p}/skireport"
@@ -98,7 +159,12 @@ def main(path):
             data = parse(t, now)
             if "updated" in data or "base_cm" in data:
                 data["url"] = url
-                hills[hid] = data
+                if hid in hills:   # resort's own report wins; borrow only what it lacks
+                    for k in ("lifts_open", "lifts_total", "runs_open", "runs_total", "closed", "summit_cm", "comment"):
+                        if k in data and k not in hills[hid]: hills[hid][k] = data[k]
+                else:
+                    data["source_name"] = "OnTheSnow"
+                    hills[hid] = data
                 break
             last = f"{p}: page loaded but no snow report found"
         else:

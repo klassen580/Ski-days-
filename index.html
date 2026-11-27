@@ -430,7 +430,7 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
     <button id="settingsBtn">⚙️ Settings</button>
   </div>
   </div>
-  <p class="mute small" style="margin-top:16px">Snow numbers: ✅ official hill reports (resort-reported, via <a href="https://www.onthesnow.com/" target="_blank" rel="noopener">OnTheSnow</a>, checked hourly) where available; otherwise 📡 forecast estimates from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>.</p>
+  <p class="mute small" style="margin-top:16px">Snow numbers: ✅ official hill reports (Lake Louise and Sunshine straight from their own snow reports; other hills via <a href="https://www.onthesnow.com/" target="_blank" rel="noopener">OnTheSnow</a>; checked hourly) where available; otherwise 📡 forecast estimates from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>.</p>
   <p class="mute small" style="text-align:center;margin-top:4px"><a href="#" id="verLink" style="color:inherit">Ski Days · version <span id="verNum"></span></a></p>
 </div>
 
@@ -1377,13 +1377,14 @@ function renderReport(){
         <div class="cond">
           <span class="pill srcPill ${r.official ? "ok" : ""}">${r.official ? "✅ Hill report" : "📡 Model"}</span>
           <span class="pill ${r.snow24>=10?"pow":""}">❄️ ${r.snow24} cm 24h</span>
-          <span class="pill ${r.snow48>=20?"pow":""}">${r.snow48} cm 48h</span>
+          ${r.official && r.official.overnight_cm != null ? `<span class="pill">Overnight ${r.official.overnight_cm} cm</span>` : ""}
+          ${!r.official || r.official.new48_cm != null ? `<span class="pill ${r.snow48>=20?"pow":""}">${r.snow48} cm 48h</span>` : ""}
           <span class="pill">Next 24h: ${r.next24} cm</span>
-          ${r.depth!=null?`<span class="pill">Base ~${r.depth} cm</span>`:""}
+          ${hasHillMeasures(r) ? hillPills(r) : r.depth!=null?`<span class="pill">Base ${r.official ? "" : "~"}${r.depth} cm</span>`:""}
           <span class="pill">${Math.round(r.temp)}°C</span>
           <span class="pill">💨 ${Math.round(r.wind)} km/h</span>
           <span class="pill">${esc(r.wx)}</span>
-          ${r.week && r.week.length?`<span class="pill">7-day: ${Math.round(r.week.reduce((a,w)=>a+w.s,0))} cm</span>`:""}
+          ${r.week && r.week.length?`<span class="pill">Next 7 days ~${Math.round(r.week.reduce((a,w)=>a+w.s,0))} cm</span>`:""}
         </div>
         ${r.week && r.week.length?`<div class="week">${r.week.map((w,k) => `<div><b>${w.s>=1?Math.round(w.s):""}</b><i style="height:${Math.max(2, w.s/wkMax*44)}px"></i><span>${k===0?"Today":parseYmd(w.date).toLocaleDateString("en-CA",{weekday:"short"})}</span></div>`).join("")}</div>`:""}
         <div class="row small" style="margin-top:10px;gap:8px 12px;flex-wrap:wrap">
@@ -1436,7 +1437,7 @@ function applyOfficial(){
     if (r.m24 === undefined){ r.m24 = r.snow24; r.m48 = r.snow48; r.mDepth = r.depth; r.mOver = r.overnight; }
     const o = officialFor(r.id);
     if (o){
-      if (o.new24_cm != null){ r.snow24 = o.new24_cm; r.overnight = o.new24_cm; } else { r.snow24 = r.m24; r.overnight = r.mOver; }
+      if (o.new24_cm != null){ r.snow24 = o.new24_cm; r.overnight = o.overnight_cm != null ? o.overnight_cm : o.new24_cm; } else { r.snow24 = r.m24; r.overnight = r.mOver; }
       r.snow48 = o.new48_cm != null ? o.new48_cm : r.m48;
       const base = o.base_cm != null ? o.base_cm : o.mid_cm; r.depth = base != null ? base : r.mDepth;
       r.official = o;
@@ -1461,9 +1462,20 @@ async function loadOfficial(){
   applyOfficial();
   if (report && report.data){ renderReport(); renderToday(); renderAlerts(); renderHome(); renderNear(); }
 }
+// The measures the hill itself posts (upper/mid base, 7-day, season), when its own report has them
+function hillPills(r){
+  const o = r && r.official; if (!o) return "";
+  const up = o.upper_label || "Base", p = [];
+  if (o.base_cm != null) p.push(`<span class="pill">${esc(up)}${o.upper_label ? " base" : ""} ${o.base_cm} cm</span>`);
+  if (o.mid_cm != null) p.push(`<span class="pill">Mid base ${o.mid_cm} cm</span>`);
+  if (o.new7_cm != null) p.push(`<span class="pill">7 days ${o.new7_cm} cm</span>`);
+  if (o.season_cm != null) p.push(`<span class="pill">Season ${o.season_cm} cm</span>`);
+  return p.join("");
+}
+const hasHillMeasures = r => r && r.official && (r.official.mid_cm != null || r.official.new7_cm != null || r.official.season_cm != null);
 function sourceLine(r){
   const o = r && r.official;
-  if (o) return `<div class="srcLine ok">✅ Official hill report · ${fmtDate(o.updated)}${o.closed ? " · not open yet" : o.lifts_total ? ` · ${o.lifts_open}/${o.lifts_total} lifts open` : ""}${o.summit_cm != null ? ` · summit ${o.summit_cm} cm` : ""}</div>`;
+  if (o) return `<div class="srcLine ok">✅ ${esc(o.source_name && o.source_name !== "OnTheSnow" ? o.source_name : "Official hill report")} · ${fmtDate(o.updated)}${o.closed ? " · not open yet" : o.lifts_total ? ` · ${o.lifts_open}/${o.lifts_total} lifts open` : ""}${o.summit_cm != null ? ` · summit ${o.summit_cm} cm` : ""}</div>`;
   return `<div class="srcLine">📡 Forecast model estimate${regionOf(hillById(r.id)) === "rockies" ? " · no hill report today" : ""}</div>`;
 }
 
@@ -1497,17 +1509,17 @@ function renderHome(){
       <button id="homeChange" style="flex:0 0 auto;padding:6px 10px" class="small">Change</button></div>
     ${stale ? `<div class="small" style="color:var(--warn);margin-top:6px">⚠️ ${reportLoading ? "Refreshing… showing" : canRetry ? "Couldn't refresh. Showing" : "Showing"} data from ${new Date(report.at).toLocaleString("en-CA", {weekday:"short", hour:"numeric", minute:"2-digit"})}. Pow alerts are paused until it updates.</div>${retryBtn}` : ""}
     <div class="homeStats">
-      ${tile(r.overnight != null ? Math.round(r.overnight) : null, r.official ? "New snow cm" : "Overnight cm", r.overnight >= 5)}
+      ${tile(r.overnight != null ? Math.round(r.overnight) : null, r.official && r.official.overnight_cm == null ? "New snow cm" : "Overnight cm", r.overnight >= 5)}
       ${tile(Math.round(r.snow24), "24h cm", r.snow24 >= 10)}
-      ${tile(Math.round(r.snow48), "48h cm", r.snow48 >= 20)}
+      ${r.official && r.official.new48_cm == null && r.official.new7_cm != null ? tile(r.official.new7_cm, "7 days cm", r.official.new7_cm >= 30) : tile(Math.round(r.snow48), "48h cm", r.snow48 >= 20)}
     </div>
     ${sourceLine(r)}
     <div class="cond">
-      ${r.depth != null ? `<span class="pill">Base ${r.official ? "" : "~"}${r.depth} cm</span>` : ""}
+      ${hasHillMeasures(r) ? hillPills(r) : r.depth != null ? `<span class="pill">Base ${r.official ? "" : "~"}${r.depth} cm</span>` : ""}
       <span class="pill">${Math.round(r.temp)}°C</span><span class="pill">💨 ${Math.round(r.wind)} km/h</span><span class="pill">${esc(r.wx)}</span>
       <span class="pill ${r.next24 >= 10 ? "pow" : ""}">Next 24h: ${r.next24} cm</span>
     </div>
-    ${past.length ? `<div class="weekLabel">Past 7 days · ${pastTot} cm</div>${weekBars(past, max, true)}` : ""}
+    ${past.length ? `<div class="weekLabel">Past 7 days · ${r.official && r.official.new7_cm != null ? `hill reports ${r.official.new7_cm} cm · model ~${pastTot} cm` : `${pastTot} cm`}</div>${weekBars(past, max, true)}` : ""}
     ${next.length ? `<div class="weekLabel">Next 7 days · ~${nextTot} cm</div>${weekBars(next, max, false)}` : ""}
     ${powOutlook(r)}
     ${avyHTML(h)}
@@ -3191,8 +3203,9 @@ function renderHomeHelp(){
 }
 
 // ---------- Version tracker ----------
-const APP_VERSION = "2026-11-26a";
+const APP_VERSION = "2026-11-26b";
 const CHANGELOG = [
+  ["2026-11-26b", "Snow numbers straight from the hill", ["Lake Louise and Sunshine now read the hill's own snow report in cm instead of OnTheSnow", "Shows the same numbers the hill posts: overnight, 24h, 7 days, upper and mid base, season total", "Hides the 48h figure when the hill doesn't post one, so a model guess isn't shown as official"]],
   ["2026-11-26a", "A real app on your phone", ["Install it to your home screen with its own icon; it opens full screen", "Works with no signal: shows the last snow and weather it saw", "Share Ski Days with friends from Settings"]],
   ["2026-11-25e", "Tidier ticket list", ["Season page shows your latest 10 lift tickets, with a Show all tickets button"]],
   ["2026-11-25d", "Season page layout", ["Ski days, pow days and cm fresh tiles plus the snow stake now sit at the top of the Season page"]],
