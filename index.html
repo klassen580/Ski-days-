@@ -244,8 +244,23 @@ a{color:var(--accent2)}
 .tp button{position:absolute;top:2px;right:2px;width:44px;height:44px;padding:0;border-radius:50%;font-size:16px;background:rgba(0,0,0,.6);border:none;color:#fff}
 .tpAdd{aspect-ratio:1;border:2px dashed var(--line);background:none;border-radius:10px;font-size:26px;line-height:1.2;color:var(--mute)}
 .tripThumb{width:52px;height:52px;object-fit:cover;border-radius:10px;flex:0 0 auto}
-#photoView{align-items:center}
-#photoView img{max-width:94vw;max-height:86vh;border-radius:12px}
+#photoView{align-items:center;justify-content:center;flex-direction:column;background:rgba(2,8,18,.94)}
+#photoView img{max-width:94vw;max-height:80vh;border-radius:12px;touch-action:pan-y}
+#photoView .pvBar{display:flex;align-items:center;gap:14px;margin-top:12px;color:#fff}
+#photoView .pvBar button{width:48px;height:48px;padding:0;border-radius:50%;font-size:22px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff}
+#photoView .pvBar span{min-width:60px;text-align:center;font-size:14px;opacity:.85}
+#photoView .pvClose{position:absolute;top:calc(env(safe-area-inset-top) + 12px);right:12px;width:48px;height:48px;padding:0;border-radius:50%;font-size:20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff}
+.thumbWrap{position:relative;margin-top:8px}
+.thumbWrap .thumb{margin-top:0;cursor:zoom-in}
+.thumbWrap .more{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.65);color:#fff;font-size:13px;font-weight:700;padding:4px 9px;border-radius:999px;pointer-events:none}
+.bookCard{background:linear-gradient(135deg,#123a63,#0e2a4a);border:1px solid rgba(143,227,176,.45)}
+.bookCard .cdBig{display:flex;gap:10px;margin:8px 0 4px}
+.bookCard .cdBig div{flex:1;text-align:center;background:rgba(255,255,255,.07);border-radius:12px;padding:8px 4px}
+.bookCard .cdBig b{display:block;font-size:34px;line-height:1}
+.bookCard .cdBig span{font-size:11px;letter-spacing:1px;text-transform:uppercase;opacity:.75}
+.bookBtn{width:100%;margin-top:12px;padding:12px;font-size:16px;font-weight:700}
+.bookBtn.on{background:rgba(47,191,113,.18);border-color:#2fbf71;color:#8fe3b0}
+.bookedTag{display:inline-block;margin-left:6px;font-size:12px;padding:2px 8px;border-radius:999px;background:rgba(47,191,113,.2);color:#8fe3b0;vertical-align:middle}
 .recCard{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .recRow{display:block;padding:7px 0;border-top:1px solid var(--line);text-decoration:none;color:var(--ink)}
 .recRow:first-of-type{border-top:none}
@@ -411,6 +426,7 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
   <div id="viewSeason">
   <div class="stats" id="stats" style="margin-bottom:10px"></div>
   <div id="goalCard"></div>
+  <div id="bookedCard"></div>
   <div id="backupNag"></div>
   <div id="alertBox"></div>
   <div id="homeCard"></div>
@@ -455,9 +471,8 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
   <label>Gear</label><select id="fGear"></select>
   <label>Day costs ($)</label>
   <div class="costGrid"><input type="number" id="cGas" min="0" placeholder="⛽ Gas"><input type="number" id="cFood" min="0" placeholder="🍔 Food"><input type="number" id="cLodge" min="0" placeholder="🏨 Lodging"><input type="number" id="cOther" min="0" placeholder="🎟️ Other"></div>
-  <label>Photo</label><div id="fPhotoBox"></div>
-  <div class="row"><button id="fPhotoBtn">📷 Add photo</button><button class="danger" id="fPhotoDel" style="display:none">Remove photo</button></div>
-  <input type="file" id="fPhoto" accept="image/*" style="display:none">
+  <label>Photos</label><div id="fPhotoBox" class="tripPhotos"></div>
+  <input type="file" id="fPhoto" accept="image/*" multiple style="display:none">
   <div id="fCond"></div>
   <div class="row" style="margin-top:14px">
     <button id="fRefresh">↻ Snow data</button>
@@ -834,14 +849,18 @@ function render(){
         ${d.buddies && d.buddies.length?`<div class="buddyLine">👥 with ${esc(d.buddies.join(", "))}</div>`:""}
         ${crashLine(d)}
         ${d.notes?`<div class="notes">${esc(d.notes)}</div>`:""}
-        ${d.photo?`<img class="thumb" data-photo="${d.id}" alt="">`:""}</div></div>`;
+        ${(() => { const k = dayPhotoKeys(d); return k.length ? `<div class="thumbWrap"><img class="thumb" data-photo="${k[0]}" data-day="${d.id}" alt="Tap to view photo">${k.length > 1 ? `<span class="more">📷 ${k.length}</span>` : ""}</div>` : ""; })()}</div></div>`;
   }).join("") + moreBtn + tallyCards : `<div class="empty"><span class="display">No turns logged yet</span>Your ${currentSeason} lift tickets will show up here.</div>`;
-  document.querySelectorAll(".day").forEach(el => el.onclick = () => openDay(state.days.find(d => d.id === el.dataset.id)));
+  document.querySelectorAll(".day").forEach(el => el.onclick = e => {
+    const th = e.target.closest(".thumb");
+    if (th){ e.stopPropagation(); const d = state.days.find(x => x.id === th.dataset.day); if (d) openViewer(dayPhotoKeys(d), 0); return; }
+    openDay(state.days.find(d => d.id === el.dataset.id));
+  });
   if ($("ticketsMore")) $("ticketsMore").onclick = () => {
     const wasAll = showAllTickets; showAllTickets = !showAllTickets; render();
     if (wasAll){ const h = $("dayList"); if (h) h.scrollIntoView({behavior: "smooth", block: "start"}); }
   };
-  loadThumbs(); renderBackupNag(); renderHome(); renderNear(); renderGoal(); renderTrips(); renderAlerts();
+  loadThumbs(); renderBackupNag(); renderHome(); renderNear(); renderGoal(); renderBooked(); renderTrips(); renderAlerts();
   if (viewOn("viewStats")) renderStatsView();
   if (viewOn("viewGear")) renderGear();
   checkBadges();
@@ -870,7 +889,7 @@ function openDay(day){
   renderBuddyChips();
   $("fGear").innerHTML = `<option value="">— None —</option>` + state.gear.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join("");
   $("fGear").value = day ? (day.gear || "") : (defaultGear() || "");
-  editPhoto = null; showPhotoBox(day); loadCrash(day);
+  editPics = day ? dayPhotoKeys(day).map(key => ({key})) : []; editDrop = []; showPhotoBox(); loadCrash(day);
   const cs = (day && day.costs) || {};
   $("cGas").value = cs.gas || ""; $("cFood").value = cs.food || ""; $("cLodge").value = cs.lodging || ""; $("cOther").value = cs.other || "";
   $("dayModal").classList.add("open");
@@ -891,14 +910,23 @@ $("fSave").onclick = async () => {
   const num = id => { const v = parseFloat($(id).value); return v > 0 ? v : 0; };
   const costs = {gas: num("cGas"), food: num("cFood"), lodging: num("cLodge"), other: num("cOther")};
   Object.assign(day, {date, hill, rating: editRating, notes: $("fNotes").value.trim(), buddies, gear, costs, crash: crashValue()});
-  if (editPhoto === "remove") day.photo = false;
-  else if (editPhoto){ try { await PDB.put(day.id, editPhoto); day.photo = true; delete thumbCache[day.id]; } catch(e){ toast("Couldn't save the photo"); } }
+  const added = [];
+  for (const [i, pic] of editPics.entries()){
+    if (pic.key) continue;
+    const key = `${day.id}_p${Date.now().toString(36)}${i}`;
+    try { await PDB.put(key, pic.blob); pic.key = key; added.push(key); } catch(e){ toast("Couldn't save one of the photos"); }
+  }
+  const keys = editPics.filter(p => p.key).map(p => p.key);
+  day.photo = keys.includes(day.id); day.photos = keys.filter(k => k !== day.id);
+  day.photoOrder = keys;
   if (!save()){
-    if (isNew){ state.days = state.days.filter(d => d !== day); if (editPhoto && editPhoto !== "remove") PDB.del(day.id); }
+    for (const k of added) PDB.del(k);
+    editPics.forEach(p => { if (added.includes(p.key)) p.key = null; });
+    if (isNew){ state.days = state.days.filter(d => d !== day); }
     else { Object.keys(day).forEach(k => delete day[k]); Object.assign(day, before); }
     return;   // keep the editor open so nothing is lost
   }
-  if (editPhoto === "remove"){ await PDB.del(day.id); delete thumbCache[day.id]; }
+  for (const k of editDrop){ await PDB.del(k); delete thumbCache[k]; }
   currentSeason = seasonOf(date);
   render(); $("dayModal").classList.remove("open");
   if (isNew) celebrate(seasonOf(date));
@@ -909,7 +937,7 @@ $("fDelete").onclick = () => confirmBox("Delete this ski day?", () => {
   const prev = state.days;
   state.days = state.days.filter(d => d !== editing);
   if (!save()){ state.days = prev; return; }
-  if (editing.photo) PDB.del(editing.id);
+  dayPhotoKeys(editing).forEach(k => PDB.del(k));
   render(); $("dayModal").classList.remove("open");
 });
 $("addBtn").onclick = () => openDay(null);
@@ -1130,7 +1158,7 @@ $("sClose").onclick = () => {
 function markBackup(){ state.lastBackup = todayStr(); save(); renderBackupNag(); }
 function backupJSON(){ return JSON.stringify(Object.assign({}, state, {lastBackup: todayStr()})); }
 const blobToDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
-function photoIds(){ return [...new Set(state.days.filter(d => d.photo).map(d => d.id).concat(...(state.trips || []).map(t => t.photos || [])))]; }
+function photoIds(){ return [...new Set(state.days.flatMap(dayPhotoKeys).concat(...(state.trips || []).map(t => t.photos || [])))]; }
 async function collectPhotos(){
   const out = {};
   for (const id of photoIds()){ try { const b = await PDB.getStrict(id); if (b) out[id] = await blobToDataURL(b); } catch(e){} }
@@ -1201,7 +1229,8 @@ function sanitizeBackup(data){
       track: t ? {dist: num(t.dist, 0, 1e4), vert: num(t.vert, 0, 1e6), top: num(t.top, 0, 500)} : null,
       cond: c ? {snow24: num(c.snow24, 0, 1000), snow48: num(c.snow48, 0, 2000), snow72: num(c.snow72, 0, 3000), depth: optNum(c.depth, 0, 10000),
         tMax: num(c.tMax, -90, 60), tMin: num(c.tMin, -90, 60), wind: num(c.wind, 0, 500), wx: str(c.wx, 40), fetchedOn: ymdOk(c.fetchedOn) ? c.fetchedOn : ""} : null,
-      created: str(d.created, 40), photo: d.photo === true,
+      created: str(d.created, 40), photo: d.photo === true, photos: arr(d.photos).map(sid).filter(Boolean).slice(0, 60),
+      photoOrder: arr(d.photoOrder).map(sid).filter(Boolean).slice(0, 61),
       costs: {gas: num(cs.gas, 0, 1e6), food: num(cs.food, 0, 1e6), lodging: num(cs.lodging, 0, 1e6), other: num(cs.other, 0, 1e6)},
       crash: cr ? (num(cr.n, 0, 99) > 0 ? {n: Math.max(1, Math.round(num(cr.n, 1, 99))), types: arr(cr.types).map(x => str(x, 60)).filter(Boolean).slice(0, 20), note: str(cr.note, 500)} : {n: 0}) : null
     });
@@ -1219,6 +1248,7 @@ function sanitizeBackup(data){
     const start = ymdOk(t.start) ? t.start : null, end = ymdOk(t.end) && start && t.end >= start ? t.end : start, it = obj(t.items) ? t.items : {};
     const o = {id: sid(t.id), name: str(t.name, 200), hill: sid(t.hill) || "louise", start, end, notes: str(t.notes),
       items: {stay: items(it.stay), eat: items(it.eat), do: items(it.do)}, photos: arr(t.photos).map(sid).filter(Boolean)};
+    if (t.booked === true){ o.booked = true; if (ymdOk(t.bookedOn)) o.bookedOn = t.bookedOn; }
     if (Array.isArray(t.pack)) o.pack = t.pack.filter(obj).map(p => ({t: str(p.t, 200), done: p.done === true})).filter(p => p.t);
     return o; }).filter(t => t.id && t.start);
   const seasonMap = (o, f) => { const out = {}; if (obj(o)) for (const [k, v] of Object.entries(o)) if (seasonOk(k)){ const x = f(v); if (x != null) out[k] = x; } return out; };
@@ -1627,7 +1657,7 @@ function renderTrips(){
     const r = reportFor(t.hill);
     const fc = !done && r && r.week && n <= 6 ? (() => { const s = r.week.filter(w => w.date >= t.start && w.date <= t.end).reduce((a,w) => a + w.s, 0); return s ? ` · ❄️ ~${Math.round(s)} cm forecast` : ""; })() : "";
     return `<div class="tripRow" data-trip="${t.id}"><div class="cd">${cd}</div>${t.photos && t.photos.length ? `<img class="tripThumb" data-photo="${t.photos[0]}" alt="">` : ""}
-      <div style="flex:1;min-width:0"><b class="display" style="font-size:22px">${esc(t.name || hillById(t.hill).name)}</b>
+      <div style="flex:1;min-width:0"><b class="display" style="font-size:22px">${esc(t.name || hillById(t.hill).name)}</b>${t.booked && !done ? `<span class="bookedTag">✅ Booked</span>` : ""}
       <div class="mute small">${esc(hillById(t.hill).name)} · ${fmtDate(t.start)}${t.end !== t.start ? `–${fmtDate(t.end)}` : ""} (${tripDays} day${tripDays>1?"s":""})${fc}</div>
       ${tripSummary(t)}
       ${(done || on) && logged < tripDays ? `<button class="logTrip" data-trip="${t.id}" style="margin-top:6px;padding:5px 10px;font-size:13px">🎟️ Log trip days (${logged}/${tripDays})</button>` : ""}</div></div>`;
@@ -1695,6 +1725,7 @@ const LIST_CFG = {
   do:   {title: "Ideas & activities", ph: "Hot springs, après, sightseeing…", check: "Done", maps: "things to do", q: "apres things to do"}
 };
 const PACK_DEFAULT = ["Skis or board","Boots","Poles","Helmet","Goggles","Gloves or mitts","Base layers","Mid layer","Shell jacket & pants","Neck warmer","Ski socks","Pass or lift tickets","Sunscreen & lip balm","Phone charger","Hand warmers","Snacks & water","Wax & tune kit","Après outfit"];
+let booking = false;
 let tripDraft = null, tripTab = "details", tripNewPhotos = [], tripDropPhotos = [];
 const nightsOf = t => Math.max(0, Math.round((parseYmd(t.end) - parseYmd(t.start)) / 864e5));
 function syncDetails(){
@@ -1725,7 +1756,17 @@ function renderTripModal(){
       <label>Hill</label><select id="tHill">${hillOptions(tripDraft.hill)}</select>
       <div class="row"><div><label>Start</label><input type="date" id="tStart" value="${tripDraft.start}"></div><div><label>End</label><input type="date" id="tEnd" value="${tripDraft.end}"></div></div>
       <label>Notes</label><textarea id="tNotes" placeholder="Flights, who's coming, confirmation numbers...">${esc(tripDraft.notes || "")}</textarea>
-      ${tripSummary(tripDraft)}`;
+      ${tripSummary(tripDraft)}
+      <button id="tBook" class="bookBtn ${tripDraft.booked ? "on" : "primary"}">${tripDraft.booked ? `✅ Booked${tripDraft.bookedOn ? ` on ${fmtDate(tripDraft.bookedOn)}` : ""} · tap to unbook` : "🎫 Book it!"}</button>
+      <div class="mute small" style="margin-top:6px">${tripDraft.booked ? "The countdown is on your Season page under the snow stake." : "Booking starts a countdown on your Season page, right under the snow stake."}</div>`;
+    $("tBook").onclick = () => {
+      syncDetails();
+      if (tripDraft.booked){ tripDraft.booked = false; delete tripDraft.bookedOn; renderTripModal(); return; }
+      if (!tripDraft.start) return toast("Pick a start date first");
+      if ((tripDraft.end || tripDraft.start) < todayStr()) return toast("That trip's dates are in the past");
+      tripDraft.booked = true; tripDraft.bookedOn = todayStr(); booking = true;
+      $("tSave").click();
+    };
     return;
   }
   if (LIST_CFG[tripTab]){
@@ -1789,9 +1830,42 @@ function renderTripModal(){
       renderTripModal();
     };
     el.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { const id = b.dataset.del; tripDraft.photos = tripDraft.photos.filter(x => x !== id); tripDropPhotos.push(id); renderTripModal(); });
-    el.querySelectorAll(".tp img").forEach(img => img.onclick = () => { if (img.src){ $("photoView").innerHTML = `<img src="${img.src}" alt="">`; $("photoView").classList.add("open"); } });
+    el.querySelectorAll(".tp img").forEach((img, i) => img.onclick = () => openViewerSrcs([...el.querySelectorAll(".tp img")].map(x => x.src).filter(Boolean), i));
   }
 }
+// ---------- Booked-trip countdown (under the snow stake) ----------
+function tripStartAt(t){ const d = parseYmd(t.start); d.setHours(9, 0, 0, 0); return d; }   // first chair-ish
+function renderBooked(){
+  const el = $("bookedCard"); if (!el) return;
+  const today = todayStr();
+  const list = (state.trips || []).filter(t => t.booked && t.end >= today).sort((a, b) => a.start.localeCompare(b.start));
+  if (!list.length){ el.innerHTML = ""; return; }
+  const t = list[0], h = hillById(t.hill), name = esc(t.name || h.name);
+  const on = t.start <= today, tripDays = Math.round((parseYmd(t.end) - parseYmd(t.start)) / 864e5) + 1;
+  let body;
+  if (on){
+    const dayN = Math.round((parseYmd(today) - parseYmd(t.start)) / 864e5) + 1;
+    body = `<div class="display" style="font-size:38px;line-height:1.05;margin-top:6px">You're on the trip! 🎉</div>
+      <div class="mute small">Day ${dayN} of ${tripDays} at ${esc(h.name)}</div>`;
+  } else {
+    const ms = Math.max(0, tripStartAt(t) - Date.now());
+    const d = Math.floor(ms / 864e5), hr = Math.floor(ms % 864e5 / 36e5), mn = Math.floor(ms % 36e5 / 6e4);
+    body = `<div class="cdBig"><div><b class="display">${d}</b><span>day${d === 1 ? "" : "s"}</span></div><div><b class="display">${hr}</b><span>hours</span></div><div><b class="display">${mn}</b><span>min</span></div></div>
+      <div class="mute small">until first chair · ${fmtDate(t.start)}${t.end !== t.start ? `–${fmtDate(t.end)}` : ""} (${tripDays} day${tripDays > 1 ? "s" : ""})</div>`;
+  }
+  const r = reportFor(t.hill), n = Math.round((parseYmd(t.start) - parseYmd(today)) / 864e5);
+  const fc = r && r.week && n <= 6 ? Math.round(r.week.filter(w => w.date >= t.start && w.date <= t.end).reduce((a, w) => a + w.s, 0)) : null;
+  const packed = t.pack && t.pack.length ? `🎒 ${t.pack.filter(p => p.done).length}/${t.pack.length} packed` : "";
+  const extra = [fc != null ? `❄️ ~${fc} cm forecast for the trip` : "", packed].filter(Boolean).join(" · ");
+  el.innerHTML = `<div class="card bookCard" data-trip="${t.id}" style="cursor:pointer">
+    <div class="signTag">🎫 Booked · ${name}</div>${body}
+    ${extra ? `<div class="small" style="margin-top:6px">${extra}</div>` : ""}
+    ${list.length > 1 ? `<div class="mute small" style="margin-top:6px">Also booked: ${list.slice(1, 4).map(x => `${esc(x.name || hillById(x.hill).name)} (${fmtDate(x.start)})`).join(", ")}</div>` : ""}
+  </div>`;
+  el.firstElementChild.onclick = () => openTrip(t);
+}
+setInterval(() => { if (document.visibilityState === "visible" && $("bookedCard") && $("bookedCard").innerHTML) renderBooked(); }, 30000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") renderBooked(); });
 function tripSummary(t){
   const it = t.items || {stay: [], eat: [], do: []}, bits = [];
   if (it.stay.length) bits.push(`🏨 ${it.stay.length}${it.stay.some(i => i.done) ? " (booked ✅)" : ""}`);
@@ -1807,14 +1881,17 @@ $("tCancel").onclick = async () => {
 };
 $("tSave").onclick = async () => {
   syncDetails();
-  if (!tripDraft.start) return toast("Pick a start date"); if (tripDraft.end < tripDraft.start) return toast("End date is before the start");
+  if (!tripDraft.start){ booking = false; if (tripDraft.bookedOn === todayStr() && !editingTrip?.booked){ tripDraft.booked = false; } return toast("Pick a start date"); }
+  if (tripDraft.end < tripDraft.start){ booking = false; if (!editingTrip?.booked){ tripDraft.booked = false; delete tripDraft.bookedOn; } renderTripModal(); return toast("End date is before the start"); }
   const prevTrips = state.trips.slice();
   const i = state.trips.findIndex(t => t.id === tripDraft.id);
   if (i >= 0) state.trips[i] = tripDraft; else state.trips.push(tripDraft);
   if (!save()){ state.trips = prevTrips; return; }
   for (const id of tripDropPhotos) await PDB.del(id);
   tripNewPhotos = []; tripDropPhotos = [];
-  render(); $("tripModal").classList.remove("open"); toast("Trip saved ✈️");
+  render(); $("tripModal").classList.remove("open");
+  if (booking){ booking = false; toast("Booked! 🎉 Countdown's on"); const c = $("bookedCard"); if (c) c.scrollIntoView({behavior: "smooth", block: "center"}); }
+  else toast("Trip saved ✈️");
 };
 $("tDelete").onclick = () => confirmBox("Delete this trip and its photos? Logged ski days stay.", async () => {
   const prevTrips = state.trips;
@@ -1823,7 +1900,16 @@ $("tDelete").onclick = () => confirmBox("Delete this trip and its photos? Logged
   for (const id of (editingTrip.photos || []).concat(tripNewPhotos)) await PDB.del(id);
   tripNewPhotos = [];
   render(); $("tripModal").classList.remove("open"); });
-$("photoView").onclick = () => $("photoView").classList.remove("open");
+$("photoView").onclick = e => {
+  const b = e.target.closest("[data-pv]");
+  if (b && b.dataset.pv !== "x"){ pvStep(+b.dataset.pv); return; }
+  if (e.target.tagName === "IMG") return;   // tapping the photo itself keeps it open
+  $("photoView").classList.remove("open");
+};
+(() => { let x0 = null;
+  $("photoView").addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, {passive: true});
+  $("photoView").addEventListener("touchend", e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) pvStep(dx < 0 ? 1 : -1); });
+})();
 
 // ---------- Achievements ----------
 const BADGES = [
@@ -2642,16 +2728,40 @@ function loadThumbs(){ document.querySelectorAll("img[data-photo]").forEach(asyn
   note.textContent = failed ? "📷 Couldn't load this photo. Close and reopen the app." : "📷 Photo isn't saved on this device. It may be in Safari or the home screen app.";
   img.replaceWith(note);
 }); }
-let editPhoto = null; // Blob | "remove" | null
-async function showPhotoBox(day){
-  const box = $("fPhotoBox"); box.innerHTML = "";
-  let url = null;
-  if (editPhoto && editPhoto !== "remove") url = URL.createObjectURL(editPhoto);
-  else if (editPhoto !== "remove" && day && day.photo) url = await photoURL(day.id);
-  if (url) box.innerHTML = `<img class="photoPrev" src="${url}" alt="">`;
-  $("fPhotoDel").style.display = url ? "" : "none";
-  $("fPhotoBtn").textContent = url ? "📷 Change photo" : "📷 Add photo";
+// A day's photos: the original one (stored under the day's id) plus any extras, in the order they were added
+function dayPhotoKeys(d){
+  if (!d) return [];
+  const all = (d.photo ? [d.id] : []).concat(d.photos || []);
+  const ord = (d.photoOrder || []).filter(k => all.includes(k));
+  return [...new Set(ord.concat(all))];
 }
+let editPics = [], editDrop = [];   // [{key} existing | {blob, url} new], keys to delete on save
+async function showPhotoBox(){
+  const box = $("fPhotoBox");
+  box.innerHTML = editPics.map((p, i) => `<div class="tp"><img ${p.key ? `data-photo="${p.key}"` : `src="${p.url}"`} data-i="${i}" alt=""><button data-del="${i}" aria-label="Remove photo">✕</button></div>`).join("")
+    + `<button class="tpAdd" id="fPhotoAdd" type="button">＋<br><span class="small">${editPics.length ? "Add more" : "Add photos"}</span></button>`;
+  loadThumbs();
+  $("fPhotoAdd").onclick = () => $("fPhoto").click();
+  box.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { const p = editPics.splice(+b.dataset.del, 1)[0]; if (p && p.key) editDrop.push(p.key); showPhotoBox(); });
+  box.querySelectorAll(".tp img").forEach(img => img.onclick = () => openViewerSrcs([...box.querySelectorAll(".tp img")].map(x => x.src).filter(Boolean), +img.dataset.i));
+}
+// Full-screen photo viewer: tap a photo to open, swipe or use the arrows, tap outside or ✕ to close
+let pvList = [], pvAt = 0;
+async function openViewer(keys, at){
+  const urls = []; for (const k of keys){ const u = await photoURL(k).catch(() => null); if (u) urls.push(u); }
+  if (!urls.length) return toast("Photo isn't saved on this device");
+  openViewerSrcs(urls, Math.min(at, urls.length - 1));
+}
+function openViewerSrcs(urls, at){
+  if (!urls.length) return;
+  pvList = urls; pvAt = at || 0; drawViewer(); $("photoView").classList.add("open");
+}
+function drawViewer(){
+  const n = pvList.length, v = $("photoView");
+  v.innerHTML = `<button class="pvClose" data-pv="x" aria-label="Close">✕</button><img src="${pvList[pvAt]}" alt="">
+    ${n > 1 ? `<div class="pvBar"><button data-pv="-1" aria-label="Previous">‹</button><span>${pvAt + 1} / ${n}</span><button data-pv="1" aria-label="Next">›</button></div>` : ""}`;
+}
+const pvStep = k => { if (pvList.length > 1){ pvAt = (pvAt + k + pvList.length) % pvList.length; drawViewer(); } };
 function shrink(file){
   return new Promise((res, rej) => {
     const img = new Image(), u = URL.createObjectURL(file);
@@ -2662,10 +2772,12 @@ function shrink(file){
     img.onerror = () => rej(new Error("Couldn't read that image")); img.src = u;
   });
 }
-$("fPhotoBtn").onclick = () => $("fPhoto").click();
-$("fPhoto").onchange = async e => { const f = e.target.files[0]; if (!f) return;
-  try { editPhoto = await shrink(f); showPhotoBox(editing); } catch(err){ toast(err.message); } e.target.value = ""; };
-$("fPhotoDel").onclick = () => { editPhoto = "remove"; showPhotoBox(editing); };
+$("fPhoto").onchange = async e => {
+  const files = [...e.target.files]; e.target.value = ""; if (!files.length) return;
+  if (files.length > 1) toast(`Adding ${files.length} photos…`);
+  for (const f of files){ try { const blob = await shrink(f); editPics.push({blob, url: URL.createObjectURL(blob)}); } catch(err){ toast(err.message); } }
+  showPhotoBox();
+};
 
 // ---------- Gear ----------
 function defaultGear(){
@@ -3136,7 +3248,7 @@ async function renderShare(){
   const c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
   x.fillStyle = "#0b1d33"; x.fillRect(0, 0, W, H);
   let bg = null;
-  try { const dayPhoto = shareOpts.day && shareOpts.day.photo ? await photoURL(shareOpts.day.id) : null; if (dayPhoto) bg = await loadImg(dayPhoto); } catch(e){ bg = null; }
+  try { const k0 = shareOpts.day ? dayPhotoKeys(shareOpts.day)[0] : null, dayPhoto = k0 ? await photoURL(k0) : null; if (dayPhoto) bg = await loadImg(dayPhoto); } catch(e){ bg = null; }
   if (!bg){ try { bg = await loadImg(HERO_IMG); } catch(e){ bg = null; } }
   const st = shareStats();
   if (shareOpts.day) await drawTicket(x, W, H, st, bg, shareOpts.day);
@@ -3203,8 +3315,9 @@ function renderHomeHelp(){
 }
 
 // ---------- Version tracker ----------
-const APP_VERSION = "2026-11-26b";
+const APP_VERSION = "2026-11-27a";
 const CHANGELOG = [
+  ["2026-11-27a", "Book it + photo viewer", ["Book it button on trips starts a live countdown right under the snow stake", "Tap a photo on a lift ticket to see it full screen; swipe between photos", "Add as many photos as you like to each ski day"]],
   ["2026-11-26b", "Snow numbers straight from the hill", ["Lake Louise and Sunshine now read the hill's own snow report in cm instead of OnTheSnow", "Shows the same numbers the hill posts: overnight, 24h, 7 days, upper and mid base, season total", "Hides the 48h figure when the hill doesn't post one, so a model guess isn't shown as official"]],
   ["2026-11-26a", "A real app on your phone", ["Install it to your home screen with its own icon; it opens full screen", "Works with no signal: shows the last snow and weather it saw", "Share Ski Days with friends from Settings"]],
   ["2026-11-25e", "Tidier ticket list", ["Season page shows your latest 10 lift tickets, with a Show all tickets button"]],
