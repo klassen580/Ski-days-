@@ -258,6 +258,11 @@ a{color:var(--accent2)}
 .bookCard .cdBig div{flex:1;text-align:center;background:rgba(255,255,255,.07);border-radius:12px;padding:8px 4px}
 .bookCard .cdBig b{display:block;font-size:34px;line-height:1}
 .bookCard .cdBig span{font-size:11px;letter-spacing:1px;text-transform:uppercase;opacity:.75}
+.tsOpt{display:flex;gap:10px;align-items:center;margin:10px 0;font-size:15px;text-transform:none;letter-spacing:0}
+.tsOpt input{width:22px;height:22px;flex:0 0 auto}
+#tiPaste{width:100%;min-height:90px}
+.tiList{margin-top:8px;font-size:14px;line-height:1.5}
+.tiList b{display:block;margin-top:6px;font-size:12px;letter-spacing:1px;text-transform:uppercase;opacity:.75}
 .bookBtn{width:100%;margin-top:12px;padding:12px;font-size:16px;font-weight:700}
 .bookBtn.on{background:rgba(47,191,113,.18);border-color:#2fbf71;color:#8fe3b0}
 .bookedTag{display:inline-block;margin-left:6px;font-size:12px;padding:2px 8px;border-radius:999px;background:rgba(47,191,113,.2);color:#8fe3b0;vertical-align:middle}
@@ -569,6 +574,21 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
   <div class="chips" id="tTabs" style="margin-top:4px"></div>
   <div id="tPane"></div>
   <div class="row" style="margin-top:14px"><button class="danger" id="tDelete">Delete</button><button id="tCancel">Cancel</button><button class="primary" id="tSave">Save</button></div>
+</div></div>
+<div class="modal" id="tripShareModal"><div class="sheet">
+  <h2 class="display">Share this trip</h2>
+  <p class="mute small">Sends a link with the trip's dates, hill and every hotel, restaurant and idea you've saved. Friends with Ski Days can add it to their trips; anyone else sees the list in the message. Share it back and the new ideas merge in.</p>
+  <label class="tsOpt"><input type="checkbox" id="tsPack" checked> Include the packing list</label>
+  <label class="tsOpt"><input type="checkbox" id="tsNotes"> Include notes <span class="mute small">(check for confirmation numbers first)</span></label>
+  <p class="mute small">Photos stay on your phone and aren't sent.</p>
+  <button class="primary" id="tsShare" style="width:100%;margin-top:8px">📤 Share trip</button>
+  <button id="tsCopy" style="width:100%;margin-top:8px">📋 Copy link</button>
+  <button id="tsClose" style="width:100%;margin-top:8px">Close</button>
+</div></div>
+<div class="modal" id="tripImportModal"><div class="sheet">
+  <h2 class="display" id="tiTitle">Shared trip</h2>
+  <div id="tiBody"></div>
+  <div class="row" style="margin-top:14px"><button id="tiClose">Not now</button><button class="primary" id="tiAdd">Add to my trips</button></div>
 </div></div>
 <div class="modal" id="photoView"></div>
 
@@ -1662,9 +1682,10 @@ function renderTrips(){
       ${tripSummary(t)}
       ${(done || on) && logged < tripDays ? `<button class="logTrip" data-trip="${t.id}" style="margin-top:6px;padding:5px 10px;font-size:13px">🎟️ Log trip days (${logged}/${tripDays})</button>` : ""}</div></div>`;
   }).join("");
-  el.innerHTML = `<div class="card"><div class="row"><div class="signTag">✈️ Trips</div><button id="tripAdd" style="flex:0 0 auto;padding:6px 10px" class="small">+ Plan a trip</button></div>
+  el.innerHTML = `<div class="card"><div class="row"><div class="signTag">✈️ Trips</div><button id="tripImp" style="flex:0 0 auto;padding:6px 10px" class="small" title="Add a trip a friend shared">📥 Import</button><button id="tripAdd" style="flex:0 0 auto;padding:6px 10px" class="small">+ Plan a trip</button></div>
     ${rows || `<div class="mute small" style="margin-top:6px">Plan a ski trip to get a countdown and its snow forecast as it gets close.</div>`}</div>`;
   $("tripAdd").onclick = () => openTrip(null);
+  $("tripImp").onclick = () => openTripImport(null);
   loadThumbs();
   el.querySelectorAll(".tripRow").forEach(r => r.onclick = e => { if (e.target.closest(".logTrip")) return; openTrip(state.trips.find(t => t.id === r.dataset.trip)); });
   el.querySelectorAll(".logTrip").forEach(b => b.onclick = async e => {
@@ -1758,7 +1779,9 @@ function renderTripModal(){
       <label>Notes</label><textarea id="tNotes" placeholder="Flights, who's coming, confirmation numbers...">${esc(tripDraft.notes || "")}</textarea>
       ${tripSummary(tripDraft)}
       <button id="tBook" class="bookBtn ${tripDraft.booked ? "on" : "primary"}">${tripDraft.booked ? `✅ Booked${tripDraft.bookedOn ? ` on ${fmtDate(tripDraft.bookedOn)}` : ""} · tap to unbook` : "🎫 Book it!"}</button>
-      <div class="mute small" style="margin-top:6px">${tripDraft.booked ? "The countdown is on your Season page under the snow stake." : "Booking starts a countdown on your Season page, right under the snow stake."}</div>`;
+      <div class="mute small" style="margin-top:6px">${tripDraft.booked ? "The countdown is on your Season page under the snow stake." : "Booking starts a countdown on your Season page, right under the snow stake."}</div>
+      <button id="tShareBtn" style="width:100%;margin-top:12px">📤 Share trip with friends</button>`;
+    $("tShareBtn").onclick = () => { syncDetails(); openTripShare(tripDraft); };
     $("tBook").onclick = () => {
       syncDetails();
       if (tripDraft.booked){ tripDraft.booked = false; delete tripDraft.bookedOn; renderTripModal(); return; }
@@ -1833,6 +1856,130 @@ function renderTripModal(){
     el.querySelectorAll(".tp img").forEach((img, i) => img.onclick = () => openViewerSrcs([...el.querySelectorAll(".tp img")].map(x => x.src).filter(Boolean), i));
   }
 }
+// ---------- Share a trip as a link (no account: the whole trip rides in the link) ----------
+const b64u = bytes => { let s = ""; bytes.forEach(b => s += String.fromCharCode(b)); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
+const unb64u = str => { const s = atob(str.replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(s, c => c.charCodeAt(0)); };
+async function packTrip(obj){
+  const raw = new TextEncoder().encode(JSON.stringify(obj));
+  if (typeof CompressionStream === "function"){
+    try { const buf = await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer(); return "z" + b64u(new Uint8Array(buf)); } catch(e){}
+  }
+  return "j" + b64u(raw);
+}
+async function unpackTrip(code){
+  const kind = code[0], bytes = unb64u(code.slice(1));
+  let txt;
+  if (kind === "z"){
+    if (typeof DecompressionStream !== "function") throw new Error("Update your browser to open shared trips");
+    txt = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+  } else if (kind === "j") txt = new TextDecoder().decode(bytes);
+  else throw new Error("That isn't a Ski Days trip link");
+  return JSON.parse(txt);
+}
+let shareTrip = null;
+function openTripShare(t){ shareTrip = t; $("tripShareModal").classList.add("open"); }
+function tripPayload(t){
+  const h = hillById(t.hill), it = t.items || {};
+  const strip = l => (l || []).map(i => { const o = {name: i.name}; if (i.url) o.url = i.url; if (i.price) o.price = i.price; if (i.note) o.note = i.note; return o; });
+  const o = {v: 1, id: t.id, name: t.name, hill: t.hill, start: t.start, end: t.end, items: {stay: strip(it.stay), eat: strip(it.eat), do: strip(it.do)}, from: APP_VERSION};
+  if (!BUILTIN_HILLS.some(b => b.id === t.hill)) o.hillInfo = {id: h.id, name: h.name, lat: h.lat, lon: h.lon, elev: h.elev, region: h.region, area: h.area, url: h.url};
+  if ($("tsPack").checked && t.pack) o.pack = t.pack.map(p => p.t);
+  if ($("tsNotes").checked && t.notes) o.notes = t.notes;
+  return o;
+}
+function tripText(t){
+  const h = hillById(t.hill), it = t.items || {}, lines = [`🎿 ${t.name || h.name} · ${h.name} · ${fmtDate(t.start)}${t.end !== t.start ? `–${fmtDate(t.end)}` : ""}`];
+  const sec = (icon, label, l) => { if (l && l.length) lines.push(`${icon} ${label}: ${l.map(i => i.name).join(", ")}`); };
+  sec("🏨", "Stay", it.stay); sec("🍽️", "Eat", it.eat); sec("✨", "Do", it.do);
+  return lines.join("\n");
+}
+async function tripLink(){ return `${location.href.split(/[?#]/)[0]}#trip=${await packTrip(tripPayload(shareTrip))}`; }
+$("tsClose").onclick = () => $("tripShareModal").classList.remove("open");
+$("tsShare").onclick = async () => {
+  const url = await tripLink(), text = tripText(shareTrip) + "\n\nOpen in Ski Days to add it to your trips:";
+  try { if (navigator.share){ await navigator.share({title: shareTrip.name || "Ski trip", text, url}); $("tripShareModal").classList.remove("open"); return; } } catch(e){ if (e && e.name === "AbortError") return; }
+  $("tsCopy").click();
+};
+$("tsCopy").onclick = async () => {
+  const url = await tripLink(), text = tripText(shareTrip) + "\n\nOpen in Ski Days to add it to your trips:\n" + url;
+  try { await navigator.clipboard.writeText(text); toast("Trip copied: paste it in a message"); $("tripShareModal").classList.remove("open"); }
+  catch(e){ prompt("Copy this trip link", url); }
+};
+// Import
+let importTrip = null;
+function cleanShared(o){
+  const str = (v, n) => typeof v === "string" ? v.slice(0, n) : "", ymd = v => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+  const url = v => typeof v === "string" && /^https?:\/\//i.test(v) ? v.slice(0, 500) : "";
+  const list = l => (Array.isArray(l) ? l : []).slice(0, 100).filter(i => i && typeof i.name === "string" && i.name.trim())
+    .map(i => ({name: str(i.name, 200), url: url(i.url), price: Math.max(0, Math.min(1e6, +i.price || 0)), note: str(i.note, 500), done: false}));
+  const start = ymd(o.start); if (!o || !start) throw new Error("That trip link is incomplete");
+  const end = ymd(o.end) && o.end >= start ? o.end : start;
+  const t = {id: str(o.id, 60).replace(/[^\w.-]/g, "") || "trip" + Date.now().toString(36), name: str(o.name, 200), hill: str(o.hill, 100).replace(/[^\w.-]/g, ""), start, end,
+    notes: str(o.notes, 5000), items: {stay: list(o.items && o.items.stay), eat: list(o.items && o.items.eat), do: list(o.items && o.items.do)}, photos: []};
+  t.pack = Array.isArray(o.pack) ? o.pack.filter(x => typeof x === "string" && x.trim()).slice(0, 200).map(x => ({t: x.slice(0, 200), done: false})) : PACK_DEFAULT.map(x => ({t: x, done: false}));
+  let hillInfo = null;
+  if (o.hillInfo && typeof o.hillInfo === "object" && isFinite(o.hillInfo.lat) && isFinite(o.hillInfo.lon)){
+    const hi = o.hillInfo; hillInfo = {id: t.hill, name: str(hi.name, 80) || t.hill, lat: Math.max(-90, Math.min(90, +hi.lat)), lon: Math.max(-180, Math.min(180, +hi.lon)),
+      elev: Math.round(Math.max(0, Math.min(9000, +hi.elev || 0))), region: REGIONS.some(r => r[0] === hi.region) ? hi.region : "rockies", area: str(hi.area, 30)};
+    if (url(hi.url)) hillInfo.url = url(hi.url);
+  }
+  return {t, hillInfo};
+}
+async function openTripImport(code){
+  importTrip = null; $("tiTitle").textContent = "Shared trip";
+  if (!code){
+    $("tiBody").innerHTML = `<p class="mute small">Paste the trip link a friend sent you (the whole message is fine).</p><textarea id="tiPaste" placeholder="https://…#trip=…"></textarea>`;
+    $("tiAdd").textContent = "Open trip"; $("tripImportModal").classList.add("open");
+    $("tiAdd").onclick = () => { const m = $("tiPaste").value.match(/#trip=([\w-]+)/); if (!m) return toast("Couldn't find a trip link in that"); openTripImport(m[1]); };
+    return;
+  }
+  let got;
+  try { got = cleanShared(await unpackTrip(code)); } catch(e){ toast(e.message && e.message.length < 80 ? e.message : "That trip link looks broken"); $("tripImportModal").classList.remove("open"); return; }
+  importTrip = got;
+  const t = got.t, known = hills().some(h => h.id === t.hill), hname = known ? hillById(t.hill).name : got.hillInfo ? got.hillInfo.name : "your home hill";
+  const mine = (state.trips || []).find(x => x.id === t.id), it = t.items;
+  const sec = (icon, label, l) => l.length ? `<b>${icon} ${label}</b>${l.map(i => esc(i.name)).join(" · ")}` : "";
+  const nIdeas = it.stay.length + it.eat.length + it.do.length;
+  $("tiTitle").textContent = t.name || hname;
+  $("tiBody").innerHTML = `<div class="mute">${esc(hname)} · ${fmtDate(t.start)}${t.end !== t.start ? `–${fmtDate(t.end)}` : ""}</div>
+    <div class="tiList">${sec("🏨", "Stay", it.stay)}${sec("🍽️", "Eat", it.eat)}${sec("✨", "Do", it.do)}${nIdeas ? "" : `<div class="mute small">No saved ideas yet.</div>`}
+    ${t.notes ? `<b>📝 Notes</b>${esc(t.notes)}` : ""}</div>
+    ${mine ? `<p class="small" style="margin-top:10px">You already have this trip. New ideas will be added to yours; nothing of yours is removed.</p>` : ""}`;
+  $("tiAdd").textContent = mine ? "Merge ideas" : "Add to my trips";
+  $("tiAdd").onclick = saveImportedTrip;
+  $("tripImportModal").classList.add("open");
+}
+function saveImportedTrip(){
+  if (!importTrip) return;
+  const {t, hillInfo} = importTrip, prev = JSON.stringify({trips: state.trips || [], customHills: state.customHills || []});
+  state.trips = state.trips || []; state.customHills = state.customHills || [];
+  if (!hills().some(h => h.id === t.hill)){
+    if (hillInfo && hillInfo.id) state.customHills.push(hillInfo); else t.hill = homeHill();
+  }
+  const mine = state.trips.find(x => x.id === t.id);
+  let msg;
+  if (mine){
+    let added = 0; mine.items = Object.assign({stay: [], eat: [], do: []}, mine.items || {});
+    for (const k of ["stay", "eat", "do"]){
+      const have = new Set(mine.items[k].map(i => i.name.trim().toLowerCase()));
+      for (const i of t.items[k]) if (!have.has(i.name.trim().toLowerCase())){ mine.items[k].push(i); have.add(i.name.trim().toLowerCase()); added++; }
+    }
+    if (mine.pack && t.pack){ const have = new Set(mine.pack.map(p => p.t.toLowerCase())); t.pack.forEach(p => { if (!have.has(p.t.toLowerCase())) mine.pack.push(p); }); }
+    if (t.notes && !(mine.notes || "").includes(t.notes)) mine.notes = mine.notes ? `${mine.notes}\n\n${t.notes}` : t.notes;
+    msg = added ? `Added ${added} new idea${added === 1 ? "" : "s"} ✈️` : "You already had all of these ideas";
+  } else { state.trips.push(t); msg = "Trip added ✈️"; }
+  if (!save()){ const p = JSON.parse(prev); state.trips = p.trips; state.customHills = p.customHills; return; }
+  $("tripImportModal").classList.remove("open"); importTrip = null;
+  render(); toast(msg);
+}
+$("tiClose").onclick = () => { importTrip = null; $("tripImportModal").classList.remove("open"); };
+function checkTripLink(){
+  const m = location.hash.match(/^#trip=([\w-]+)/); if (!m) return;
+  try { history.replaceState(null, "", location.pathname + location.search); } catch(e){}
+  openTripImport(m[1]);
+}
+addEventListener("hashchange", checkTripLink);
+
 // ---------- Booked-trip countdown (under the snow stake) ----------
 function tripStartAt(t){ const d = parseYmd(t.start); d.setHours(9, 0, 0, 0); return d; }   // first chair-ish
 function renderBooked(){
@@ -3315,8 +3462,9 @@ function renderHomeHelp(){
 }
 
 // ---------- Version tracker ----------
-const APP_VERSION = "2026-11-27a";
+const APP_VERSION = "2026-11-27b";
 const CHANGELOG = [
+  ["2026-11-27b", "Share trips", ["Share a trip's dates, hotels, restaurants and ideas with a link", "Friends with Ski Days tap the link (or use 📥 Import) to add the trip", "Share it back and forth: new ideas merge in, nothing gets removed"]],
   ["2026-11-27a", "Book it + photo viewer", ["Book it button on trips starts a live countdown right under the snow stake", "Tap a photo on a lift ticket to see it full screen; swipe between photos", "Add as many photos as you like to each ski day"]],
   ["2026-11-26b", "Snow numbers straight from the hill", ["Lake Louise and Sunshine now read the hill's own snow report in cm instead of OnTheSnow", "Shows the same numbers the hill posts: overnight, 24h, 7 days, upper and mid base, season total", "Hides the 48h figure when the hill doesn't post one, so a model guess isn't shown as official"]],
   ["2026-11-26a", "A real app on your phone", ["Install it to your home screen with its own icon; it opens full screen", "Works with no signal: shows the last snow and weather it saw", "Share Ski Days with friends from Settings"]],
@@ -3369,7 +3517,7 @@ document.querySelectorAll(".modal").forEach(m => m.addEventListener("click", e =
 // ---------- Back button closes the top sheet (each open sheet gets a history entry) ----------
 const modalStack = [];
 let ignorePop = 0;
-const MODAL_CANCEL = {dayModal: "fCancel", tripModal: "tCancel", pastModal: "pCancel1", confirmModal: "cNo", shareModal: "shClose", recapModal: "recapClose"};
+const MODAL_CANCEL = {tripShareModal: "tsClose", tripImportModal: "tiClose", dayModal: "fCancel", tripModal: "tCancel", pastModal: "pCancel1", confirmModal: "cNo", shareModal: "shClose", recapModal: "recapClose"};
 const modalObs = new MutationObserver(muts => {
   let pending = 0;
   for (const m of muts){
@@ -3421,6 +3569,7 @@ setTimeout(() => autoSnapshot(false), 3000);
 loadAvy(false);
 (async () => { try { if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) await navigator.storage.persist(); } catch(e){} })();
 if (state.settings.useLoc) locate(false);
+setTimeout(checkTripLink, 400);
 (async () => {
   const q = new URLSearchParams(location.search).get("log");
   if (q){
