@@ -263,6 +263,11 @@ a{color:var(--accent2)}
 #tiPaste{width:100%;min-height:90px}
 .tiList{margin-top:8px;font-size:14px;line-height:1.5}
 .tiList b{display:block;margin-top:6px;font-size:12px;letter-spacing:1px;text-transform:uppercase;opacity:.75}
+.trackMap{display:block;width:100%;height:auto;margin-top:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.trackTiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 10px}
+.trackTiles div{background:rgba(255,255,255,.05);border-radius:12px;padding:8px 6px;text-align:center}
+.trackTiles b{display:block;font-size:24px}
+.trackTiles span{font-size:11px;letter-spacing:.5px;text-transform:uppercase;opacity:.75}
 .bookBtn{width:100%;margin-top:12px;padding:12px;font-size:16px;font-weight:700}
 .bookBtn.on{background:rgba(47,191,113,.18);border-color:#2fbf71;color:#8fe3b0}
 .bookedTag{display:inline-block;margin-left:6px;font-size:12px;padding:2px 8px;border-radius:999px;background:rgba(47,191,113,.2);color:#8fe3b0;vertical-align:middle}
@@ -404,6 +409,7 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
     <h2 class="display">🏅 Trophy case</h2><div class="card" id="badges"></div>
     <h2 class="display">💰 Pass value</h2><div class="card" id="passCard"></div>
     <h2 class="display">🏆 Records</h2><div class="recGrid" id="records"></div>
+    <h2 class="display">⌚ Tracked with Garmin</h2><div class="card" id="trackCard"></div>
     <h2 class="display">📅 Season calendar</h2><div class="card" id="heatmap"></div>
     <h2 class="display">📈 Season vs season</h2><div class="card" id="compare"></div>
     <h2 class="display">👥 Ski buddies</h2><div class="card" id="buddies"></div>
@@ -519,6 +525,17 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
   <button id="sInstall" class="primary" style="display:none;width:100%;margin-bottom:8px">📲 Install Ski Days</button>
   <button id="sShare" style="width:100%;margin-bottom:8px">📤 Share Ski Days with friends</button>
   <div class="row"><input id="sSiri" readonly><button id="sSiriCopy" style="flex:0 0 auto">Copy</button></div>
+  <h2 class="display">⌚ Garmin</h2>
+  <p class="mute small">Bring in runs, vertical, distance, top speed and your track from your Garmin watch. On the Garmin Connect website open a ski activity, tap the ⚙️ gear icon, then <b>Export Original</b>. Pick the downloaded file (the .zip is fine) here.</p>
+  <button id="gImport" class="primary" style="width:100%">📂 Import Garmin file</button>
+  <details id="gApiBox" style="margin-top:10px"><summary class="small">🔄 Direct sync with your Garmin account (experimental)</summary>
+    <p class="mute small">Paste a Personal API key from connect.garmin.com/app/settings/personalApiToken. It's kept only on this phone and never put in backups. Garmin may block web apps from connecting; if so, use the file import above.</p>
+    <input id="gKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Personal API key">
+    <div class="row" style="margin-top:8px"><button id="gKeySave">Save key</button><button id="gKeyDel" class="danger">Forget key</button></div>
+    <button id="gSync" class="primary" style="width:100%;margin-top:8px">🔄 Sync Garmin ski days</button>
+  </details>
+  <div id="gStatus" class="mute small" style="margin-top:8px"></div>
+  <input type="file" id="gFile" multiple style="display:none">
   <h2 class="display">🆕 What's new</h2>
   <p class="mute small" id="verNow"></p>
   <div id="changelog"></div>
@@ -796,8 +813,27 @@ function condPills(c){
   </div>`;
 }
 function trackPills(t){
-  if (!t || !t.dist) return "";
-  return `<div class="cond"><span class="pill">📏 ${t.dist.toFixed(1)} km</span><span class="pill">⬇️ ${Math.round(t.vert).toLocaleString()} m vert</span><span class="pill">⚡ ${t.top} km/h</span></div>`;
+  if (!t || !(t.dist || t.vert)) return "";
+  const p = [];
+  if (t.src === "garmin") p.push(`<span class="pill">⌚ Garmin</span>`);
+  if (t.runs) p.push(`<span class="pill">🎿 ${t.runs} run${t.runs === 1 ? "" : "s"}</span>`);
+  if (t.vert) p.push(`<span class="pill">⬇️ ${Math.round(t.vert).toLocaleString()} m vert</span>`);
+  if (t.dist) p.push(`<span class="pill">📏 ${(+t.dist).toFixed(1)} km</span>`);
+  if (t.top) p.push(`<span class="pill">⚡ ${Math.round(t.top)} km/h</span>`);
+  if (t.hrs) p.push(`<span class="pill">⏱️ ${Math.floor(t.hrs)}h ${String(Math.round(t.hrs % 1 * 60)).padStart(2, "0")}m</span>`);
+  return `<div class="cond">${p.join("")}</div>` + trackSvg(t.pts);
+}
+// A sketch of the day's GPS track (no map tiles needed)
+function trackSvg(pts){
+  if (!pts || pts.length < 6) return "";
+  const lat0 = pts.reduce((a, q) => a + q[0], 0) / pts.length, k = Math.cos(lat0 * Math.PI / 180);
+  const xs = pts.map(q => q[1] * k), ys = pts.map(q => -q[0]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const W = 300, H = 170, pad = 10, sc = Math.min((W - 2*pad) / Math.max(1e-6, x1 - x0), (H - 2*pad) / Math.max(1e-6, y1 - y0));
+  const ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2;
+  const d = xs.map((x, i) => `${i ? "L" : "M"}${((x - x0) * sc + ox).toFixed(1)} ${((ys[i] - y0) * sc + oy).toFixed(1)}`).join("");
+  const e = d.split("L"), last = e[e.length - 1].replace("M", "").split(" ");
+  return `<svg class="trackMap" viewBox="0 0 ${W} ${H}" role="img" aria-label="GPS track of the day"><path d="${d}" fill="none" stroke="#ff6a3d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${last[0]}" cy="${last[1]}" r="4" fill="#8fe3b0"/></svg>`;
 }
 function ticketPills(d){
   const c = d.cond, t = d.track, out = [];
@@ -805,7 +841,7 @@ function ticketPills(d){
     out.push(`<span class="pill ${pow?"pow":""}">❄️ ${c.snow24} cm · ${c.snow48} cm 48h</span>`);
     if (c.depth != null) out.push(`<span class="pill">Base ~${c.depth}</span>`);
     out.push(`<span class="pill">${Math.round(c.tMin)}°/${Math.round(c.tMax)}°</span>`); }
-  if (t && t.vert) out.push(`<span class="pill">⬇️ ${Math.round(t.vert).toLocaleString()} m</span>`);
+  if (t && t.vert) out.push(`<span class="pill">${t.src === "garmin" ? "⌚ " : ""}⬇️ ${Math.round(t.vert).toLocaleString()} m${t.runs ? ` · ${t.runs} runs` : ""}</span>`);
   return out.length ? `<div class="cond">${out.join("")}</div>` : "";
 }
 function renderToday(){
@@ -1246,7 +1282,9 @@ function sanitizeBackup(data){
       id, date: d.date, hill, rating: Math.round(num(d.rating, 0, 5)), notes: str(d.notes),
       buddies: [...new Set(arr(d.buddies).map(b => str(b, 80).trim()).filter(Boolean))].slice(0, 50),
       gear: sid(d.gear) || null,
-      track: t ? {dist: num(t.dist, 0, 1e4), vert: num(t.vert, 0, 1e6), top: num(t.top, 0, 500)} : null,
+      track: t ? {dist: num(t.dist, 0, 1e4), vert: num(t.vert, 0, 1e6), top: num(t.top, 0, 500), runs: Math.round(num(t.runs, 0, 999)), hrs: num(t.hrs, 0, 48),
+        src: t.src === "garmin" ? "garmin" : "", acts: arr(t.acts).map(Number).filter(isFinite).slice(0, 20),
+        pts: arr(t.pts).filter(q => Array.isArray(q) && q.length === 2 && isFinite(q[0]) && isFinite(q[1]) && Math.abs(q[0]) <= 90 && Math.abs(q[1]) <= 180).slice(0, 400).map(q => [+(+q[0]).toFixed(5), +(+q[1]).toFixed(5)])} : null,
       cond: c ? {snow24: num(c.snow24, 0, 1000), snow48: num(c.snow48, 0, 2000), snow72: num(c.snow72, 0, 3000), depth: optNum(c.depth, 0, 10000),
         tMax: num(c.tMax, -90, 60), tMin: num(c.tMin, -90, 60), wind: num(c.wind, 0, 500), wx: str(c.wx, 40), fetchedOn: ymdOk(c.fetchedOn) ? c.fetchedOn : ""} : null,
       created: str(d.created, 40), photo: d.photo === true, photos: arr(d.photos).map(sid).filter(Boolean).slice(0, 60),
@@ -1979,6 +2017,237 @@ function checkTripLink(){
   openTripImport(m[1]);
 }
 addEventListener("hashchange", checkTripLink);
+
+// ---------- Garmin: FIT / GPX / zip import, plus Personal API sync ----------
+const FIT_EPOCH = 631065600;   // FIT time starts 1989-12-31 UTC
+function parseFIT(buf){
+  const dv = new DataView(buf), u8 = new Uint8Array(buf), hs = u8[0];
+  if (hs < 12 || String.fromCharCode(u8[8], u8[9], u8[10], u8[11]) !== ".FIT") throw new Error("Not a FIT file");
+  const end = Math.min(buf.byteLength, hs + dv.getUint32(4, true));
+  const want = {18: "session", 19: "lap", 20: "record", 34: "activity"}, out = {session: [], lap: [], record: [], activity: []}, defs = {};
+  let p = hs, lastTs = 0;
+  const val = (at, size, bt, le) => { const t = bt & 0x1f;
+    try { switch (t){
+      case 0: case 2: case 13: { const v = u8[at]; return v === 0xff ? null : v; }
+      case 10: { const v = u8[at]; return v === 0 ? null : v; }
+      case 1: { const v = dv.getInt8(at); return v === 0x7f ? null : v; }
+      case 3: { if (size < 2) return null; const v = dv.getInt16(at, le); return v === 0x7fff ? null : v; }
+      case 4: case 11: { if (size < 2) return null; const v = dv.getUint16(at, le); return v === (t === 11 ? 0 : 0xffff) ? null : v; }
+      case 5: { if (size < 4) return null; const v = dv.getInt32(at, le); return v === 0x7fffffff ? null : v; }
+      case 6: case 12: { if (size < 4) return null; const v = dv.getUint32(at, le); return v === (t === 12 ? 0 : 0xffffffff) ? null : v; }
+      case 8: { if (size < 4) return null; const v = dv.getFloat32(at, le); return isFinite(v) ? v : null; }
+      default: return null; } } catch(e){ return null; } };
+  const read = d => { const m = want[d.g] ? {} : null;
+    for (const [n, size, bt] of d.f){ if (m){ const v = val(p, size, bt, d.le); if (v != null) m[n] = v; } p += size; }
+    p += d.dev; return m; };
+  try {
+    while (p < end){
+      const h = u8[p++];
+      if (h & 0x80){   // compressed timestamp header
+        const d = defs[(h >> 5) & 3]; if (!d) break;
+        const off = h & 0x1f; let ts = (lastTs & ~0x1f) + off; if (off < (lastTs & 0x1f)) ts += 0x20; lastTs = ts;
+        const m = read(d); if (m){ m[253] = ts; out[want[d.g]].push(m); } continue;
+      }
+      if (h & 0x40){   // definition
+        p++; const le = u8[p++] === 0, g = dv.getUint16(p, le); p += 2; const n = u8[p++], f = [];
+        for (let i = 0; i < n; i++){ f.push([u8[p], u8[p + 1], u8[p + 2]]); p += 3; }
+        let dev = 0; if (h & 0x20){ const nd = u8[p++]; for (let i = 0; i < nd; i++){ dev += u8[p + 1]; p += 3; } }
+        defs[h & 0x0f] = {g, le, f, dev};
+      } else {
+        const d = defs[h & 0x0f]; if (!d) break;
+        const m = read(d); if (m){ if (m[253] != null) lastTs = m[253]; out[want[d.g]].push(m); }
+      }
+    }
+  } catch(e){}   // keep whatever was read before a damaged spot
+  if (!out.session.length && !out.record.length) throw new Error("Couldn't read that FIT file");
+  return out;
+}
+// Runs + vertical from altitude: a run is a drop of 40 m or more, a lift a climb of 40 m or more
+function summarizeTrack(recs){
+  recs = recs.filter(r => r.t).sort((a, b) => a.t - b.t);
+  const geo = recs.filter(r => r.lat != null && r.lon != null);
+  let dist = 0; for (let i = 1; i < geo.length; i++){ const d = km(geo[i - 1], geo[i]); if (d < 2) dist += d; }
+  const al = recs.filter(r => r.alt != null).map(r => r.alt), sm = al.map((_, i) => { const w = al.slice(Math.max(0, i - 3), i + 4); return w.reduce((a, b) => a + b, 0) / w.length; });
+  let runs = 0, vert = 0, dir = 0, hi = sm[0], lo = sm[0], top = sm[0];
+  for (const x of sm){
+    if (dir >= 0){ if (x > hi) hi = x; if (hi - x >= 40){ dir = -1; runs++; top = hi; lo = x; } }
+    else { if (x < lo) lo = x; if (x - lo >= 40){ dir = 1; vert += top - lo; hi = x; } }
+  }
+  if (dir === -1) vert += top - lo;
+  let topSp = Math.max(0, ...recs.map(r => r.spd || 0)) * 3.6;
+  if (!topSp) for (let i = 0, j = 0; i < geo.length; i++){
+    while (j < i && geo[i].t - geo[j].t > 20) j++;
+    const dt = geo[i].t - geo[j].t; if (dt >= 8){ let dd = 0; for (let k = j + 1; k <= i; k++) dd += km(geo[k - 1], geo[k]); topSp = Math.max(topSp, dd / dt * 3600); }
+  }
+  return {dist, vert, runs, top: Math.min(topSp, 160), hrs: recs.length > 1 ? (recs[recs.length - 1].t - recs[0].t) / 3600 : 0, pts: thinPts(geo)};
+}
+function thinPts(geo){ const step = Math.max(1, Math.ceil(geo.length / 300)); return geo.filter((_, i) => i % step === 0 || i === geo.length - 1).map(r => [+r.lat.toFixed(5), +r.lon.toFixed(5)]); }
+const localYmd = (unix, offSec) => { if (offSec == null) return ymd(new Date(unix * 1000)); const d = new Date((unix + offSec) * 1000); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`; };
+function fitActivity(f){
+  const sc = v => v != null ? v * 180 / 2147483648 : null;
+  const recs = f.record.filter(r => r[253]).map(r => ({t: r[253] + FIT_EPOCH, lat: sc(r[0]), lon: sc(r[1]),
+    alt: r[78] != null ? r[78] / 5 - 500 : r[2] != null ? r[2] / 5 - 500 : null, spd: r[73] != null ? r[73] / 1000 : r[6] != null ? r[6] / 1000 : null}));
+  const S = f.session[0] || {}, A = f.activity[0] || {}, calc = summarizeTrack(recs);
+  const start = (S[2] || f.record.find(r => r[253])?.[253] || A[253]) + FIT_EPOCH;
+  const off = A[5] != null && A[253] != null ? A[5] - A[253] : null;
+  const sport = S[5], skiish = sport == null || sport === 13 || sport === 14;
+  const lapRuns = f.lap.filter(l => (l[22] || 0) >= 30).length;
+  const sum = k => f.session.reduce((a, x) => a + (x[k] || 0), 0);
+  const t = {src: "garmin", acts: [start],
+    dist: sum(9) ? sum(9) / 1e5 : calc.dist,
+    vert: sum(23) || calc.vert,
+    runs: lapRuns >= 2 ? lapRuns : calc.runs,
+    top: Math.max(...f.session.map(x => (x[125] != null ? x[125] : x[15] || 0) / 1000 * 3.6), 0) || calc.top,
+    hrs: sum(7) ? sum(7) / 3.6e6 : calc.hrs, pts: calc.pts};
+  const p0 = calc.pts[0] || (S[3] != null ? [sc(S[3]), sc(S[4])] : null);
+  return {date: localYmd(start, off), start, lat: p0 ? p0[0] : null, lon: p0 ? p0[1] : null, ski: skiish, sport: sport === 14 ? "board" : "ski", track: t};
+}
+function gpxActivity(text){
+  const doc = new DOMParser().parseFromString(text, "application/xml"), tag = (n, k) => { const e = n.getElementsByTagName(k)[0]; return e ? e.textContent : null; };
+  const recs = [...doc.getElementsByTagName("trkpt")].map(n => ({lat: +n.getAttribute("lat"), lon: +n.getAttribute("lon"), alt: tag(n, "ele") != null ? +tag(n, "ele") : null, t: Date.parse(tag(n, "time")) / 1000 || 0, spd: null}))
+    .filter(r => isFinite(r.lat) && isFinite(r.lon) && r.t);
+  if (recs.length < 2) throw new Error("No GPS track in that GPX file");
+  const c = summarizeTrack(recs), start = recs[0].t;
+  return {date: localYmd(start), start, lat: recs[0].lat, lon: recs[0].lon, ski: true, track: {src: "garmin", acts: [start], dist: c.dist, vert: c.vert, runs: c.runs, top: c.top, hrs: c.hrs, pts: c.pts}};
+}
+async function unzipEntries(buf){
+  const dv = new DataView(buf), u8 = new Uint8Array(buf); let e = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 66000); i--) if (dv.getUint32(i, true) === 0x06054b50){ e = i; break; }
+  if (e < 0) throw new Error("Couldn't open that zip");
+  const n = dv.getUint16(e + 10, true), out = []; let p = dv.getUint32(e + 16, true);
+  for (let k = 0; k < n && dv.getUint32(p, true) === 0x02014b50; k++){
+    const method = dv.getUint16(p + 10, true), size = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lo = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nl)); p += 46 + nl + xl + cl;
+    if (!/\.(fit|gpx)$/i.test(name)) continue;
+    const ds = lo + 30 + dv.getUint16(lo + 26, true) + dv.getUint16(lo + 28, true), raw = u8.slice(ds, ds + size);
+    if (method === 0) out.push({name, data: raw.buffer});
+    else if (method === 8){
+      if (typeof DecompressionStream !== "function") throw new Error("Unzip the file first, then import the .fit inside");
+      out.push({name, data: await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer()});
+    }
+  }
+  return out;
+}
+async function activitiesFrom(buf){
+  const u8 = new Uint8Array(buf);
+  if (u8[0] === 0x50 && u8[1] === 0x4b){ const out = []; for (const e of await unzipEntries(buf)) out.push(...await activitiesFrom(e.data)); if (!out.length) throw new Error("No FIT or GPX file inside that zip"); return out; }
+  if (u8.length > 12 && String.fromCharCode(u8[8], u8[9], u8[10], u8[11]) === ".FIT") return [fitActivity(parseFIT(buf))];
+  const txt = new TextDecoder().decode(u8);
+  if (/<gpx[\s>]/i.test(txt.slice(0, 3000))) return [gpxActivity(txt)];
+  throw new Error("That's not a Garmin FIT, GPX or zip file");
+}
+function matchHill(lat, lon){
+  if (lat == null || lon == null) return null;
+  let best = null; for (const h of hills()) if (h.lat != null){ const d = km(h, {lat, lon}); if (!best || d < best.d) best = {id: h.id, d}; }
+  return best && best.d < 25 ? best.id : null;
+}
+function mergeTrack(a, b){
+  if (!a || a.src !== "garmin" || !a.acts || b.acts.some(x => a.acts.includes(x))) return b;   // same activity again: replace
+  return {src: "garmin", acts: a.acts.concat(b.acts).slice(0, 20), dist: (a.dist || 0) + b.dist, vert: (a.vert || 0) + b.vert, runs: (a.runs || 0) + b.runs,
+    top: Math.max(a.top || 0, b.top || 0), hrs: (a.hrs || 0) + b.hrs, pts: (a.pts || []).concat(b.pts || []).slice(0, 400)};
+}
+const roundTrack = t => ({...t, dist: Math.round(t.dist * 10) / 10, vert: Math.round(t.vert), runs: Math.round(t.runs), top: Math.round(t.top), hrs: Math.round(t.hrs * 100) / 100});
+function gStatus(msg){ const el = $("gStatus"); if (el) el.innerHTML = msg; }
+async function applyActivities(acts, notes){
+  const before = JSON.stringify(state.days), added = [], updated = new Set(), guessed = [];
+  acts.sort((a, b) => a.start - b.start);
+  for (const a of acts){
+    if (!a.ski){ notes.push(`${fmtDate(a.date)}: not a ski activity, skipped`); continue; }
+    let day = findDay(a.date);
+    if (!day){
+      let hill = matchHill(a.lat, a.lon); if (!hill){ hill = homeHill(); guessed.push(a.date); }
+      day = {id: Date.now().toString(36) + added.length, date: a.date, hill, rating: 0, notes: "", buddies: [], gear: defaultGear(), track: null, cond: null, created: new Date().toISOString()};
+      state.days.push(day); added.push(day);
+    } else if (!added.includes(day)) updated.add(day);
+    day.track = roundTrack(mergeTrack(day.track, a.track));
+  }
+  if (!added.length && !updated.size){ gStatus(notes.length ? esc(notes.join(" · ")) : "Nothing new to import."); toast(notes[0] || "Nothing new to import"); return 0; }
+  if (!save()){ state.days = JSON.parse(before); return 0; }
+  if (added.length) currentSeason = seasonOf(added[added.length - 1].date);
+  render();
+  const n = added.length + updated.size;
+  const msg = `⌚ ${n} ski day${n === 1 ? "" : "s"} from Garmin${added.length && updated.size ? ` (${added.length} new, ${updated.size} updated)` : added.length ? " added" : " updated"}`;
+  toast(msg);
+  gStatus(esc(msg) + (guessed.length ? `<br>Couldn't tell the hill for ${guessed.map(fmtDate).join(", ")}, so it's set to your home hill. Open the day to change it.` : "") + (notes.length ? "<br>" + esc(notes.join(" · ")) : ""));
+  if (added.length){ celebrate(currentSeason); await refreshDays(added); }
+  return n;
+}
+async function importGarminFiles(files){
+  const acts = [], notes = [];
+  gStatus(`Reading ${files.length} file${files.length === 1 ? "" : "s"}…`);
+  for (const f of files){ try { acts.push(...await activitiesFrom(await f.arrayBuffer())); } catch(e){ notes.push(`${f.name}: ${e.message}`); } }
+  return applyActivities(acts, notes);
+}
+// Personal API (key → 24h token → activity list → FIT download). Garmin may refuse calls from web pages.
+const GARMIN_API = "https://personal.connectapi.garmin.com";
+const gStore = { get(){ try { return JSON.parse(localStorage.getItem("skidays.garmin")) || {}; } catch(e){ return {}; } },
+  set(o){ try { localStorage.setItem("skidays.garmin", JSON.stringify(o)); } catch(e){} } };
+const BLOCKED = "Garmin didn't let this web app connect (browsers block it unless Garmin allows it). Use 📂 Import Garmin file instead: it gets the same data.";
+async function garminToken(){
+  const g = gStore.get(); if (!g.key) throw new Error("Save your Garmin API key first");
+  if (g.token && g.exp > Date.now() + 6e4) return g.token;
+  let r; try { r = await fetch(GARMIN_API + "/personalapitoken-service/personal-api/personal-api-key/token", {method: "POST", headers: {Authorization: "ApiKey " + g.key, Accept: "*/*"}}); }
+  catch(e){ throw new Error(BLOCKED); }
+  if (r.status === 401 || r.status === 403) throw new Error("Garmin didn't accept that key. Make a new one and save it again.");
+  if (!r.ok) throw new Error(`Garmin answered ${r.status}. Try again later.`);
+  let tok = (await r.text()).trim(); try { const j = JSON.parse(tok); tok = typeof j === "string" ? j : j.accessToken || j.access_token || j.token || tok; } catch(e){}
+  gStore.set({...gStore.get(), token: tok, exp: Date.now() + 23 * 36e5}); return tok;
+}
+async function garminGet(path, bin){
+  const tok = await garminToken(); let r;
+  try { r = await fetch(GARMIN_API + path, {headers: {Authorization: "Bearer " + tok}}); } catch(e){ throw new Error(BLOCKED); }
+  if (r.status === 401){ const g = gStore.get(); delete g.token; gStore.set(g); throw new Error("Garmin sign-in expired. Tap Sync again."); }
+  if (!r.ok) throw new Error(`Garmin answered ${r.status}`);
+  return bin ? r.arrayBuffer() : r.json();
+}
+async function garminSync(){
+  const btn = $("gSync"); btn.disabled = true; gStatus("Connecting to Garmin…");
+  try {
+    const from = seasonOf(todayStr()).slice(0, 4) + "-08-01";
+    const list = await garminGet(`/activitylist-service/activities/search/activities?start=0&limit=100&startDate=${from}&endDate=${todayStr()}`);
+    const all = Array.isArray(list) ? list : list.activityList || list.activities || [];
+    const key = a => ((a.activityType && a.activityType.typeKey) || a.activityTypeKey || a.activityType || "") + "";
+    const ski = all.filter(a => /ski|snowboard/i.test(key(a)) && !/cross_country|skate_ski|classic_ski|xc/i.test(key(a)));
+    const done = new Set(gStore.get().done || []), todo = ski.filter(a => !done.has(String(a.activityId)));
+    if (!todo.length){ gStatus(ski.length ? `All ${ski.length} Garmin ski day${ski.length === 1 ? " is" : "s are"} already in Ski Days.` : "No ski activities on Garmin this season yet."); return; }
+    const acts = [], notes = [];
+    for (const [i, a] of todo.entries()){
+      gStatus(`Downloading ${i + 1} of ${todo.length}…`);
+      try { acts.push(...await activitiesFrom(await garminGet(`/download-service/files/activity/${a.activityId}`, true))); }
+      catch(e){
+        if (e.message === BLOCKED) throw e;
+        const st = Date.parse((a.startTimeGMT || a.startTimeLocal || "").replace(" ", "T") + (a.startTimeGMT ? "Z" : "")) / 1000;
+        if (!st){ notes.push(`Couldn't read ${a.activityName || "an activity"}`); continue; }
+        acts.push({date: (a.startTimeLocal || "").slice(0, 10) || localYmd(st), start: st, lat: a.startLatitude, lon: a.startLongitude, ski: true,
+          track: {src: "garmin", acts: [st], dist: (a.distance || 0) / 1000, vert: a.elevationLoss || 0, runs: 0, top: (a.maxSpeed || 0) * 3.6, hrs: (a.duration || 0) / 3600, pts: []}});
+      }
+    }
+    await applyActivities(acts, notes);
+    gStore.set({...gStore.get(), done: [...done, ...todo.map(a => String(a.activityId))].slice(-500), last: Date.now()});
+  } catch(e){ gStatus(esc(e.message)); toast(e.message.length < 90 ? e.message : "Garmin sync didn't work"); }
+  finally { btn.disabled = false; }
+}
+$("gImport").onclick = () => $("gFile").click();
+$("gFile").onchange = async e => { const files = [...e.target.files]; e.target.value = ""; if (files.length) await importGarminFiles(files); };
+$("gKeySave").onclick = () => { const k = $("gKey").value.trim(); if (!k) return toast("Paste your Garmin API key first"); gStore.set({key: k}); $("gKey").value = ""; $("gKey").placeholder = "Key saved on this phone ✓"; toast("Garmin key saved on this phone"); };
+$("gKeyDel").onclick = () => { try { localStorage.removeItem("skidays.garmin"); } catch(e){} $("gKey").placeholder = "Personal API key"; toast("Garmin key removed"); };
+$("gSync").onclick = garminSync;
+if (gStore.get().key) $("gKey").placeholder = "Key saved on this phone ✓";
+function renderTrackCard(){
+  const el = $("trackCard"); if (!el) return;
+  const days = seasonDays(currentSeason).filter(d => d.track && (d.track.vert || d.track.dist));
+  const btns = `<div class="row"><button id="tcImport" class="primary">📂 Import Garmin file</button>${gStore.get().key ? `<button id="tcSync">🔄 Sync</button>` : ""}</div>`;
+  if (!days.length) el.innerHTML = `<div class="mute small" style="margin-bottom:10px">Import your Garmin ski days to see runs, vertical and top speed for the season. On connect.garmin.com open a ski activity, ⚙️ → Export Original.</div>${btns}`;
+  else {
+    const tot = k => days.reduce((a, d) => a + (d.track[k] || 0), 0), big = days.slice().sort((a, b) => (b.track.vert || 0) - (a.track.vert || 0))[0];
+    const top = Math.max(...days.map(d => d.track.top || 0)), runs = tot("runs");
+    el.innerHTML = `<div class="trackTiles"><div><b class="display">${Math.round(tot("vert")).toLocaleString()}</b><span>m vertical</span></div><div><b class="display">${runs || "—"}</b><span>runs</span></div><div><b class="display">${Math.round(tot("dist"))}</b><span>km</span></div>
+      <div><b class="display">${Math.round(top)}</b><span>top km/h</span></div><div><b class="display">${Math.round(tot("vert") / days.length).toLocaleString()}</b><span>m per day</span></div><div><b class="display">${days.length}</b><span>days tracked</span></div></div>
+      <div class="mute small" style="margin-bottom:10px">Biggest day: <b style="color:var(--ink)">${Math.round(big.track.vert).toLocaleString()} m</b> at ${esc(hillById(big.hill).name)}, ${fmtDate(big.date)}</div>${btns}`;
+  }
+  $("tcImport").onclick = () => $("gFile").click();
+  if ($("tcSync")) $("tcSync").onclick = garminSync;
+}
 
 // ---------- Booked-trip countdown (under the snow stake) ----------
 function tripStartAt(t){ const d = parseYmd(t.start); d.setHours(9, 0, 0, 0); return d; }   // first chair-ish
@@ -2774,7 +3043,7 @@ function renderStatsView(){
       return rec("Crashes", answered.length ? crashes : "–", answered.length ? `${clean} clean day${clean === 1 ? "" : "s"}${fav ? ` · top: ${esc(fav[0])}` : ""}` : "log them on any day") +
              rec("Worst wipeout day", worst ? `${worst.crash.n} 💥` : "–", worst ? `${esc(hillById(worst.hill).name)} · ${fmtDate(worst.date)}` : (answered.length ? "none yet 🛡️" : ""));
     })();
-  renderHeatmap(); renderCompare(); renderBuddyStats(S); renderBadges(); if ($("viewStats").style.display !== "none"){ renderMap(); renderSnowpack(); }
+  renderTrackCard(); renderHeatmap(); renderCompare(); renderBuddyStats(S); renderBadges(); if ($("viewStats").style.display !== "none"){ renderMap(); renderSnowpack(); }
 }
 function renderHeatmap(){
   const y = +currentSeason.slice(0,4);
@@ -3462,8 +3731,9 @@ function renderHomeHelp(){
 }
 
 // ---------- Version tracker ----------
-const APP_VERSION = "2026-11-27b";
+const APP_VERSION = "2026-11-27c";
 const CHANGELOG = [
+  ["2026-11-27c", "Garmin ski days", ["Import ski days from your Garmin watch: runs, vertical, distance, top speed, time and a sketch of your track", "Works with the Export Original file from Garmin Connect (zip is fine) or a GPX file; picks the hill from your GPS", "New ⌚ Tracked with Garmin season totals on the Stats tab", "Experimental direct sync with a Garmin Personal API key (Settings → Garmin)"]],
   ["2026-11-27b", "Share trips", ["Share a trip's dates, hotels, restaurants and ideas with a link", "Friends with Ski Days tap the link (or use 📥 Import) to add the trip", "Share it back and forth: new ideas merge in, nothing gets removed"]],
   ["2026-11-27a", "Book it + photo viewer", ["Book it button on trips starts a live countdown right under the snow stake", "Tap a photo on a lift ticket to see it full screen; swipe between photos", "Add as many photos as you like to each ski day"]],
   ["2026-11-26b", "Snow numbers straight from the hill", ["Lake Louise and Sunshine now read the hill's own snow report in cm instead of OnTheSnow", "Shows the same numbers the hill posts: overnight, 24h, 7 days, upper and mid base, season total", "Hides the 48h figure when the hill doesn't post one, so a model guess isn't shown as official"]],
