@@ -528,11 +528,16 @@ button.primary{background:#d9603a;border-color:#d9603a;box-shadow:none}
   <h2 class="display">⌚ Garmin</h2>
   <p class="mute small">Bring in runs, vertical, distance, top speed and your track from your Garmin watch. On the Garmin Connect website open a ski activity, tap the ⚙️ gear icon, then <b>Export Original</b>. Pick the downloaded file (the .zip is fine) here.</p>
   <button id="gImport" class="primary" style="width:100%">📂 Import Garmin file</button>
-  <details id="gApiBox" style="margin-top:10px"><summary class="small">🔄 Direct sync with your Garmin account (experimental)</summary>
-    <p class="mute small">Paste a Personal API key from connect.garmin.com/app/settings/personalApiToken. It's kept only on this phone and never put in backups. Garmin may block web apps from connecting; if so, use the file import above.</p>
-    <input id="gKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Personal API key">
-    <div class="row" style="margin-top:8px"><button id="gKeySave">Save key</button><button id="gKeyDel" class="danger">Forget key</button></div>
-    <button id="gSync" class="primary" style="width:100%;margin-top:8px">🔄 Sync Garmin ski days</button>
+  <details id="gApiBox" style="margin-top:10px"><summary class="small">🔄 Auto-sync from Garmin (one-time setup)</summary>
+    <ol class="small" style="padding-left:18px;line-height:1.5">
+      <li>Make a <b>new</b> Personal API key at <a href="https://connect.garmin.com/app/settings/personalApiToken" target="_blank" rel="noopener">connect.garmin.com → Personal API key</a>.</li>
+      <li>Open <a href="https://github.com/klassen580/Ski-days-/settings/secrets/actions/new" target="_blank" rel="noopener">GitHub → your Ski Days repo → New secret</a>. Add <code>GARMIN_API_KEY</code> with the key. Add a second secret <code>GARMIN_PASSPHRASE</code> with a passphrase you make up.</li>
+      <li>Type that same passphrase here and tap Save. GitHub checks Garmin twice a day, and Ski Days picks up new ski days when you open it.</li>
+    </ol>
+    <p class="mute small">Your days are stored locked with the passphrase, so only your phone can read them. The passphrase stays on this phone and isn't put in backups.</p>
+    <input id="gPass" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Garmin passphrase">
+    <div class="row" style="margin-top:8px"><button id="gPassSave">Save</button><button id="gPassDel" class="danger">Forget</button></div>
+    <button id="gSync" class="primary" style="width:100%;margin-top:8px">🔄 Check for new Garmin days</button>
   </details>
   <div id="gStatus" class="mute small" style="margin-top:8px"></div>
   <input type="file" id="gFile" multiple style="display:none">
@@ -2178,65 +2183,65 @@ async function importGarminFiles(files){
   for (const f of files){ try { acts.push(...await activitiesFrom(await f.arrayBuffer())); } catch(e){ notes.push(`${f.name}: ${e.message}`); } }
   return applyActivities(acts, notes);
 }
-// Personal API (key → 24h token → activity list → FIT download). Garmin may refuse calls from web pages.
-const GARMIN_API = "https://personal.connectapi.garmin.com";
+// Auto-sync: a GitHub job (scripts/garmin_sync.py) fetches Garmin with your key and saves the files encrypted in garmin/.
+// The app decrypts them here with your passphrase (AES-GCM, PBKDF2-SHA256 150k).
 const gStore = { get(){ try { return JSON.parse(localStorage.getItem("skidays.garmin")) || {}; } catch(e){ return {}; } },
   set(o){ try { localStorage.setItem("skidays.garmin", JSON.stringify(o)); } catch(e){} } };
-const BLOCKED = "Garmin didn't let this web app connect (browsers block it unless Garmin allows it). Use 📂 Import Garmin file instead: it gets the same data.";
-async function garminToken(){
-  const g = gStore.get(); if (!g.key) throw new Error("Save your Garmin API key first");
-  if (g.token && g.exp > Date.now() + 6e4) return g.token;
-  let r; try { r = await fetch(GARMIN_API + "/personalapitoken-service/personal-api/personal-api-key/token", {method: "POST", headers: {Authorization: "ApiKey " + g.key, Accept: "*/*"}}); }
-  catch(e){ throw new Error(BLOCKED); }
-  if (r.status === 401 || r.status === 403) throw new Error("Garmin didn't accept that key. Make a new one and save it again.");
-  if (!r.ok) throw new Error(`Garmin answered ${r.status}. Try again later.`);
-  let tok = (await r.text()).trim(); try { const j = JSON.parse(tok); tok = typeof j === "string" ? j : j.accessToken || j.access_token || j.token || tok; } catch(e){}
-  gStore.set({...gStore.get(), token: tok, exp: Date.now() + 23 * 36e5}); return tok;
+async function gKeyFor(pass, saltHex){
+  const salt = Uint8Array.from(saltHex.match(/../g), h => parseInt(h, 16));
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256"}, base, {name: "AES-GCM", length: 256}, false, ["decrypt"]);
 }
-async function garminGet(path, bin){
-  const tok = await garminToken(); let r;
-  try { r = await fetch(GARMIN_API + path, {headers: {Authorization: "Bearer " + tok}}); } catch(e){ throw new Error(BLOCKED); }
-  if (r.status === 401){ const g = gStore.get(); delete g.token; gStore.set(g); throw new Error("Garmin sign-in expired. Tap Sync again."); }
-  if (!r.ok) throw new Error(`Garmin answered ${r.status}`);
-  return bin ? r.arrayBuffer() : r.json();
-}
-async function garminSync(){
-  const btn = $("gSync"); btn.disabled = true; gStatus("Connecting to Garmin…");
+const gOpen = async (key, buf) => { const u = new Uint8Array(buf); return crypto.subtle.decrypt({name: "AES-GCM", iv: u.slice(0, 12)}, key, u.slice(12)); };
+const gunzip = buf => new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+let gBusy = false;
+async function garminSync(quiet){
+  const g = gStore.get();
+  if (!g.pass){ if (!quiet){ gStatus("Type your Garmin passphrase and tap Save first."); toast("Add your Garmin passphrase first"); } return; }
+  if (gBusy) return; gBusy = true; const btn = $("gSync"); if (btn) btn.disabled = true;
   try {
-    const from = seasonOf(todayStr()).slice(0, 4) + "-08-01";
-    const list = await garminGet(`/activitylist-service/activities/search/activities?start=0&limit=100&startDate=${from}&endDate=${todayStr()}`);
-    const all = Array.isArray(list) ? list : list.activityList || list.activities || [];
-    const key = a => ((a.activityType && a.activityType.typeKey) || a.activityTypeKey || a.activityType || "") + "";
-    const ski = all.filter(a => /ski|snowboard/i.test(key(a)) && !/cross_country|skate_ski|classic_ski|xc/i.test(key(a)));
-    const done = new Set(gStore.get().done || []), todo = ski.filter(a => !done.has(String(a.activityId)));
-    if (!todo.length){ gStatus(ski.length ? `All ${ski.length} Garmin ski day${ski.length === 1 ? " is" : "s are"} already in Ski Days.` : "No ski activities on Garmin this season yet."); return; }
-    const acts = [], notes = [];
+    if (!quiet) gStatus("Checking for new Garmin days…");
+    let st; try { const r = await fetch("garmin/status.json?t=" + Date.now(), {cache: "no-store"}); if (!r.ok) throw 0; st = await r.json(); }
+    catch(e){ if (!quiet) gStatus("The Garmin sync hasn't run yet. After adding the GitHub secrets, give it a few minutes (or run “Garmin sync” in the repo's Actions tab)."); return; }
+    if (!st.salt){ if (!quiet) gStatus(esc(st.message || "Garmin sync isn't set up yet.")); return; }
+    if (quiet && g.seen === st.updated + st.salt + st.count) return;
+    const key = await gKeyFor(g.pass, st.salt);
+    const ri = await fetch("garmin/index.bin?t=" + Date.now(), {cache: "no-store"});
+    if (!ri.ok){ if (!quiet) gStatus(esc(st.message || "No Garmin ski days yet.")); return; }
+    let idx; try { idx = JSON.parse(new TextDecoder().decode(await gOpen(key, await ri.arrayBuffer()))); }
+    catch(e){ gStatus("That passphrase doesn't match the GARMIN_PASSPHRASE secret in GitHub. Check it and tap Save again."); if (!quiet) toast("Garmin passphrase doesn't match"); return; }
+    const done = new Set(g.done || []), todo = (idx.acts || []).filter(a => !done.has(a.id)), acts = [], notes = [], got = [];
     for (const [i, a] of todo.entries()){
-      gStatus(`Downloading ${i + 1} of ${todo.length}…`);
-      try { acts.push(...await activitiesFrom(await garminGet(`/download-service/files/activity/${a.activityId}`, true))); }
-      catch(e){
-        if (e.message === BLOCKED) throw e;
-        const st = Date.parse((a.startTimeGMT || a.startTimeLocal || "").replace(" ", "T") + (a.startTimeGMT ? "Z" : "")) / 1000;
-        if (!st){ notes.push(`Couldn't read ${a.activityName || "an activity"}`); continue; }
-        acts.push({date: (a.startTimeLocal || "").slice(0, 10) || localYmd(st), start: st, lat: a.startLatitude, lon: a.startLongitude, ski: true,
-          track: {src: "garmin", acts: [st], dist: (a.distance || 0) / 1000, vert: a.elevationLoss || 0, runs: 0, top: (a.maxSpeed || 0) * 3.6, hrs: (a.duration || 0) / 3600, pts: []}});
+      if (!quiet) gStatus(`Unpacking ${i + 1} of ${todo.length}…`);
+      try {
+        const r = await fetch(`garmin/${a.id}.bin?t=${Date.now()}`, {cache: "no-store"}); if (!r.ok) throw new Error("missing");
+        acts.push(...await activitiesFrom(await gunzip(await gOpen(key, await r.arrayBuffer())))); got.push(a.id);
+      } catch(e){
+        const sm = a.summary || {}, stt = Date.parse(String(sm.startTimeGMT || "").replace(" ", "T") + "Z") / 1000;
+        if (stt && a.start){ got.push(a.id); acts.push({date: String(a.start).slice(0, 10), start: stt, lat: sm.startLatitude, lon: sm.startLongitude, ski: true,
+          track: {src: "garmin", acts: [stt], dist: (sm.distance || 0) / 1000, vert: sm.elevationLoss || 0, runs: 0, top: (sm.maxSpeed || 0) * 3.6, hrs: (sm.duration || 0) / 3600, pts: []}}); }
+        else notes.push(`Couldn't read ${a.name || "one activity"}`);
       }
     }
-    await applyActivities(acts, notes);
-    gStore.set({...gStore.get(), done: [...done, ...todo.map(a => String(a.activityId))].slice(-500), last: Date.now()});
-  } catch(e){ gStatus(esc(e.message)); toast(e.message.length < 90 ? e.message : "Garmin sync didn't work"); }
-  finally { btn.disabled = false; }
+    if (acts.length) await applyActivities(acts, notes);
+    else if (!quiet) gStatus(`✅ Up to date. ${esc(st.message || "")}${st.ok === false ? "" : ""}`);
+    gStore.set({...gStore.get(), done: [...done, ...got].slice(-1000), seen: st.updated + st.salt + st.count});
+    if (st.ok === false && !quiet && !acts.length) gStatus(esc(st.message));
+  } catch(e){ if (!quiet) gStatus("Garmin check failed: " + esc(e.message || "")); }
+  finally { gBusy = false; if (btn) btn.disabled = false; }
 }
 $("gImport").onclick = () => $("gFile").click();
 $("gFile").onchange = async e => { const files = [...e.target.files]; e.target.value = ""; if (files.length) await importGarminFiles(files); };
-$("gKeySave").onclick = () => { const k = $("gKey").value.trim(); if (!k) return toast("Paste your Garmin API key first"); gStore.set({key: k}); $("gKey").value = ""; $("gKey").placeholder = "Key saved on this phone ✓"; toast("Garmin key saved on this phone"); };
-$("gKeyDel").onclick = () => { try { localStorage.removeItem("skidays.garmin"); } catch(e){} $("gKey").placeholder = "Personal API key"; toast("Garmin key removed"); };
-$("gSync").onclick = garminSync;
-if (gStore.get().key) $("gKey").placeholder = "Key saved on this phone ✓";
+$("gPassSave").onclick = () => { const k = $("gPass").value; if (!k) return toast("Type your passphrase first"); gStore.set({...gStore.get(), pass: k, seen: null}); $("gPass").value = ""; $("gPass").placeholder = "Passphrase saved on this phone ✓"; toast("Saved. Checking Garmin…"); garminSync(false); };
+$("gPassDel").onclick = () => { const g = gStore.get(); delete g.pass; gStore.set(g); $("gPass").placeholder = "Garmin passphrase"; toast("Garmin passphrase removed"); };
+$("gSync").onclick = () => garminSync(false);
+if (gStore.get().pass) $("gPass").placeholder = "Passphrase saved on this phone ✓";
+setTimeout(() => garminSync(true), 2500);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") garminSync(true); });
 function renderTrackCard(){
   const el = $("trackCard"); if (!el) return;
   const days = seasonDays(currentSeason).filter(d => d.track && (d.track.vert || d.track.dist));
-  const btns = `<div class="row"><button id="tcImport" class="primary">📂 Import Garmin file</button>${gStore.get().key ? `<button id="tcSync">🔄 Sync</button>` : ""}</div>`;
+  const btns = `<div class="row"><button id="tcImport" class="primary">📂 Import Garmin file</button>${gStore.get().pass ? `<button id="tcSync">🔄 Sync</button>` : ""}</div>`;
   if (!days.length) el.innerHTML = `<div class="mute small" style="margin-bottom:10px">Import your Garmin ski days to see runs, vertical and top speed for the season. On connect.garmin.com open a ski activity, ⚙️ → Export Original.</div>${btns}`;
   else {
     const tot = k => days.reduce((a, d) => a + (d.track[k] || 0), 0), big = days.slice().sort((a, b) => (b.track.vert || 0) - (a.track.vert || 0))[0];
@@ -2246,7 +2251,7 @@ function renderTrackCard(){
       <div class="mute small" style="margin-bottom:10px">Biggest day: <b style="color:var(--ink)">${Math.round(big.track.vert).toLocaleString()} m</b> at ${esc(hillById(big.hill).name)}, ${fmtDate(big.date)}</div>${btns}`;
   }
   $("tcImport").onclick = () => $("gFile").click();
-  if ($("tcSync")) $("tcSync").onclick = garminSync;
+  if ($("tcSync")) $("tcSync").onclick = () => garminSync(false);
 }
 
 // ---------- Booked-trip countdown (under the snow stake) ----------
@@ -3731,8 +3736,9 @@ function renderHomeHelp(){
 }
 
 // ---------- Version tracker ----------
-const APP_VERSION = "2026-11-27c";
+const APP_VERSION = "2026-11-27d";
 const CHANGELOG = [
+  ["2026-11-27d", "Garmin auto-sync", ["Garmin blocks web apps, so a GitHub job now fetches your Garmin ski days twice a day", "Days are stored locked with your passphrase; Ski Days unlocks and adds them when you open it", "Set up in Settings → Garmin → Auto-sync"]],
   ["2026-11-27c", "Garmin ski days", ["Import ski days from your Garmin watch: runs, vertical, distance, top speed, time and a sketch of your track", "Works with the Export Original file from Garmin Connect (zip is fine) or a GPX file; picks the hill from your GPS", "New ⌚ Tracked with Garmin season totals on the Stats tab", "Experimental direct sync with a Garmin Personal API key (Settings → Garmin)"]],
   ["2026-11-27b", "Share trips", ["Share a trip's dates, hotels, restaurants and ideas with a link", "Friends with Ski Days tap the link (or use 📥 Import) to add the trip", "Share it back and forth: new ideas merge in, nothing gets removed"]],
   ["2026-11-27a", "Book it + photo viewer", ["Book it button on trips starts a live countdown right under the snow stake", "Tap a photo on a lift ticket to see it full screen; swipe between photos", "Add as many photos as you like to each ski day"]],

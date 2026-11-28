@@ -1,0 +1,41 @@
+name: Garmin sync
+
+on:
+  schedule:
+    - cron: "41 2,14 * * *"   # about 8:40 am and 8:40 pm in Alberta
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/garmin_sync.py"
+      - ".github/workflows/garmin-sync.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: garmin-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: pip install --quiet cryptography
+      - name: Fetch Garmin ski days (encrypted)
+        env:
+          GARMIN_API_KEY: ${{ secrets.GARMIN_API_KEY }}
+          GARMIN_PASSPHRASE: ${{ secrets.GARMIN_PASSPHRASE }}
+        run: python3 scripts/garmin_sync.py garmin
+      - name: Save if changed
+        run: |
+          git config user.name "garmin-sync-bot"
+          git config user.email "garmin-sync-bot@users.noreply.github.com"
+          git add -A garmin
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Update Garmin ski days (encrypted)"
+          git pull --rebase origin main
+          git push origin main
