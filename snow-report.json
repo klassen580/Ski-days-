@@ -2,7 +2,7 @@
  "errors": {
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-27T18:26-07:00",
+ "generated": "2026-11-28T00:26-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 25,
@@ -188,7 +188,7 @@
    "season_cm": 56,
    "source_name": "Lake Louise snow report",
    "summit_cm": 28,
-   "updated": "2026-11-27",
+   "updated": "2026-11-28",
    "upper_label": "Back Bowls",
    "url": "https://reports.skilouise.com/"
   },
