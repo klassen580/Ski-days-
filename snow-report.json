@@ -2,7 +2,7 @@
  "errors": {
   "winsport": "alberta/winsport-canada-olympic-park: HTTP Error 404: Not Found"
  },
- "generated": "2026-11-27T15:05-07:00",
+ "generated": "2026-11-27T18:26-07:00",
  "hills": {
   "bigwhite": {
    "base_cm": 25,
@@ -26,10 +26,10 @@
     },
     {
      "cm": 2,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Fri",
    "lifts_open": 0,
    "lifts_total": 16,
    "new24_cm": 2,
@@ -60,10 +60,10 @@
     },
     {
      "cm": 5,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Fri",
    "new24_cm": 5,
    "new48_cm": 5,
    "recent_total_cm": 5,
@@ -92,10 +92,10 @@
     },
     {
      "cm": 13,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Fri",
    "new24_cm": 13,
    "new48_cm": 16,
    "recent_total_cm": 23,
@@ -125,10 +125,10 @@
     },
     {
      "cm": 8,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Fri",
    "lifts_open": 0,
    "lifts_total": 5,
    "new24_cm": 8,
@@ -159,10 +159,10 @@
     },
     {
      "cm": 1,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Fri",
    "new24_cm": 1,
    "new48_cm": 4,
    "recent_total_cm": 8,
@@ -213,10 +213,10 @@
     },
     {
      "cm": 2,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Fri",
    "lifts_open": 3,
    "lifts_total": 7,
    "mid_cm": 20,
@@ -250,20 +250,20 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
-   "lifts_open": 2,
+   "latest_label": "Fri",
+   "lifts_open": 3,
    "lifts_total": 6,
    "mid_cm": 38,
    "new24_cm": 0,
    "new48_cm": 0,
    "recent_total_cm": 0,
-   "runs_open": 5,
+   "runs_open": 8,
    "runs_total": 75,
    "source_name": "OnTheSnow",
-   "updated": "2026-11-27",
+   "updated": "2026-11-28",
    "url": "https://www.onthesnow.com/alberta/nakiska-ski-area/skireport"
   },
   "norquay": {
@@ -288,10 +288,10 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Fri",
    "lifts_open": 2,
    "lifts_total": 7,
    "new24_cm": 0,
@@ -325,10 +325,10 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Fri",
    "new24_cm": 0,
    "new48_cm": 0,
    "recent_total_cm": 0,
@@ -357,10 +357,10 @@
     },
     {
      "cm": 8,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Fri",
    "new24_cm": 8,
    "new48_cm": 51,
    "recent_total_cm": 91,
@@ -390,10 +390,10 @@
     },
     {
      "cm": 0,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Fri",
    "lifts_open": 5,
    "lifts_total": 13,
    "mid_cm": 30,
@@ -448,10 +448,10 @@
     },
     {
      "cm": 2,
-     "label": "Today"
+     "label": "Fri"
     }
    ],
-   "latest_label": "Today",
+   "latest_label": "Fri",
    "lifts_open": 10,
    "lifts_total": 26,
    "new24_cm": 2,
